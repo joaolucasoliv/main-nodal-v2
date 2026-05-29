@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NODAL — Building the Infrastructure for Collaborative Urbanism</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Nunito:wght@400;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ======================= HEADER ======================= -->
+  <header class="navbar" id="top">
+    <a class="brand" href="#top" id="brand" title="Click logo to replay">
+      <svg id="net" class="brand-mark" viewBox="0 0 120 130" aria-label="NODAL network mark"></svg>
+      <img class="brand-wordmark" src="assets/nodal-wordmark.png"
+           alt="NODAL — Nodos Urbanos de América Latina" />
+    </a>
+
+    <nav class="nav-main">
+      <a href="#membership">Opportunities</a>
+      <a href="#knowledge">Knowledge</a>
+      <a href="#knowledge">Resources</a>
+    </nav>
+
+    <nav class="nav-account">
+      <a href="#profile">Profile</a>
+      <a href="#platform">Your Network</a>
+      <a class="btn btn-pill btn-nav" href="#contact">Join NODAL</a>
+    </nav>
+
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Latin America plate — page-level cartographic backdrop on the right -->
+  <img class="map-outline" src="assets/latam-map.png" alt="" aria-hidden="true" />
+
+  <!-- Network overlay — nodes = actors, edges = trusted relationships -->
+  <svg class="hero-net" viewBox="0 0 320 420" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+    <g class="hn-edges" stroke-linecap="round" fill="none">
+      <line x1="88"  y1="64"  x2="172" y2="118"/>
+      <line x1="172" y1="118" x2="118" y2="206"/>
+      <line x1="172" y1="118" x2="238" y2="172"/>
+      <line x1="118" y1="206" x2="190" y2="272"/>
+      <line x1="238" y1="172" x2="190" y2="272"/>
+      <line x1="190" y1="272" x2="146" y2="352"/>
+    </g>
+    <g class="hn-nodes">
+      <circle cx="88"  cy="64"  r="5"/>
+      <circle cx="172" cy="118" r="8.5" class="hn-hub"/>
+      <circle cx="238" cy="172" r="5"/>
+      <circle cx="118" cy="206" r="6"/>
+      <circle cx="190" cy="272" r="7" class="hn-active"/>
+      <circle cx="146" cy="352" r="5"/>
+    </g>
+  </svg>
+
+  <!-- ======================= HERO ======================= -->
+  <section class="hero" id="home">
+    <div class="hero-atmos" aria-hidden="true"></div>
+
+    <span class="hero-coord hero-coord--tr" aria-hidden="true">LATAM · 22 países</span>
+    <span class="hero-coord hero-coord--bl" aria-hidden="true">12.04°S — 77.04°W · Lima</span>
+
+    <div class="hero-content">
+      <p class="hero-kicker">Nodos Urbanos de América Latina</p>
+      <h1 class="headline">
+        <span class="word-building">Building</span>
+        <span class="word-infra">the Infrastructure</span>
+        <span class="word-collab">for <mark>Collaborative</mark> Urbanism.</span>
+      </h1>
+      <p class="hero-sub">
+        The infrastructure layer connecting capital, talent, knowledge and
+        implementation across the cities of Latin America.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#membership">Join the network</a>
+        <a class="btn btn-ghost" href="#platform">For institutions</a>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#about" aria-label="Scroll down">
+      <span class="scroll-cue-line"></span>scroll
+    </a>
+  </section>
+
+  <!-- ======================= WHAT IS NODAL ======================= -->
+  <section class="section about" id="about">
+    <div class="wrap">
+      <p class="eyebrow reveal">What is NODAL</p>
+      <h2 class="section-lead reveal">
+        We activate trusted networks of urban changemakers — across governments,
+        communities, institutions and independent experts — using
+        <span class="hl">community, data and AI</span> to make projects work on the ground.
+      </h2>
+      <div class="about-grid">
+        <p class="reveal">NODAL is building the infrastructure layer that connects capital, talent,
+          knowledge and implementation in urban development.</p>
+        <p class="reveal">It is not just a platform. It is a system for activation, execution and
+          coordination — starting in Latin America and scaling globally.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= THE PROBLEM ======================= -->
+  <section class="section problem" id="problem">
+    <div class="wrap">
+      <p class="eyebrow light reveal">The problem</p>
+      <h2 class="section-title light reveal">Urban projects keep failing — not for lack of<br/> money, but for lack of coordination.</h2>
+      <div class="cards-3">
+        <article class="card-glass reveal">
+          <h3>Fragmented ecosystems</h3>
+          <p>Actors don't connect at scale. Weak community engagement and no trusted local networks.</p>
+        </article>
+        <article class="card-glass reveal">
+          <h3>Poor coordination</h3>
+          <p>Limited access to relevant knowledge, opportunities and collaborators between actors.</p>
+        </article>
+        <article class="card-glass reveal">
+          <h3>Wasted talent &amp; capital</h3>
+          <p>Project delays, social conflict, inefficient deployment of capital, burnout and underused talent.</p>
+        </article>
+      </div>
+      <p class="problem-foot reveal">There is currently <strong>no system</strong> that connects actors effectively at scale
+        while also supporting the people doing the work.</p>
+    </div>
+  </section>
+
+  <!-- ======================= MARKET INSIGHT / STATS ======================= -->
+  <section class="section insight" id="insight">
+    <div class="wrap">
+      <p class="eyebrow reveal">Market insight</p>
+      <h2 class="section-title reveal">A structural imbalance between urban<br/> talent supply and system needs.</h2>
+      <div class="stats">
+        <div class="stat reveal"><span class="stat-num" data-count="50">20–50</span><span class="stat-label">architects for every transport engineer graduating each year</span></div>
+        <div class="stat reveal"><span class="stat-num">1.5–2.5M</span><span class="stat-label">civil engineers across the region — yet mobility talent is scarce</span></div>
+        <div class="stat reveal"><span class="stat-num">1–3K</span><span class="stat-label">mobility engineers graduate annually, in 22 countries</span></div>
+        <div class="stat reveal"><span class="stat-num">$B+</span><span class="stat-label">multi-million to multi-billion dollar projects exposed to social risk</span></div>
+      </div>
+      <p class="insight-foot reveal">Environmental engineers, sociologists, anthropologists, communicators and civic
+        leaders remain <strong>highly distributed and disconnected.</strong> NODAL connects them.</p>
+    </div>
+  </section>
+
+  <!-- ======================= MATCHING PLATFORM (graph theory) ======================= -->
+  <section class="section platform" id="platform">
+    <div class="wrap">
+      <div class="platform-head">
+        <div>
+          <p class="eyebrow light reveal">The core idea</p>
+          <h2 class="section-title light reveal">A matching platform built on the logic of networks.</h2>
+        </div>
+        <p class="platform-intro light reveal">
+          Every person and organisation is a <strong>node</strong>. Every trusted relationship is an
+          <strong>edge</strong>. Together they form the graph of Latin American urbanism — and NODAL
+          finds the connections that make projects happen.
+        </p>
+      </div>
+
+      <div class="graph-panel reveal">
+        <span class="graph-axis" aria-hidden="true">Fig.01 — Network of actors</span>
+        <svg id="graph" viewBox="0 0 900 520" aria-label="Interactive network graph"></svg>
+        <p class="graph-hint">Hover a node to trace its connections</p>
+      </div>
+
+      <ol class="steps reveal">
+        <li class="step"><span class="step-n">01</span><h3>Map the actors</h3><p>We map the real local stakeholders — the vertices of the ecosystem.</p></li>
+        <li class="step"><span class="step-n">02</span><h3>Connect the edges</h3><p>AI-powered matching surfaces trusted, relevant connections between them.</p></li>
+        <li class="step"><span class="step-n">03</span><h3>Activate the network</h3><p>Coordination, intelligence and community turn intention into implementation.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ======================= PROFILE / PROFESSIONAL TINDER ======================= -->
+  <section class="section profile" id="profile">
+    <div class="wrap profile-wrap">
+      <div class="profile-copy">
+        <p class="eyebrow reveal">Your profile</p>
+        <h2 class="section-title reveal">Show what you do.<br/> Get matched to who needs it.</h2>
+        <p class="reveal">Your NODAL profile is a living node in the network: your skills, the projects you work
+          on, your city and your interests. Discover people and opportunities the way you'd expect —
+          swipe, connect, collaborate.</p>
+        <ul class="bullets reveal">
+          <li><strong>Public:</strong> name, role, city and headline.</li>
+          <li><strong>Members only:</strong> full skills, projects, contact and match signals.</li>
+        </ul>
+        <a class="btn btn-primary reveal" href="#membership">Create your profile</a>
+      </div>
+
+      <!-- swipeable match card -->
+      <div class="match-stack reveal" id="matchStack">
+        <article class="match-card">
+          <div class="match-avatar"><span class="leader-initial">F</span></div>
+          <div class="match-body">
+            <h3>Flavia Muro
+              <span class="lock" title="Members only">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                </svg>
+              </span>
+            </h3>
+            <p class="match-role">Urban Mobility Researcher · Lima</p>
+            <div class="tags"><span>Transport</span><span>Research</span><span>Public policy</span></div>
+            <p class="match-why">Matches your project: <em>BRT community engagement</em></p>
+          </div>
+          <div class="match-actions">
+            <button type="button" class="m-skip" aria-label="Skip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+            <button type="button" class="m-like" aria-label="Connect">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= MEMBERSHIP FREE / PAID ======================= -->
+  <section class="section membership" id="membership">
+    <div class="wrap">
+      <p class="eyebrow light reveal">Membership</p>
+      <h2 class="section-title light reveal">Start free. Go further with NODAL Pro.</h2>
+
+      <div class="plans">
+        <article class="plan reveal">
+          <header><h3>Member</h3><p class="price">Free</p></header>
+          <ul>
+            <li>Courses NODAL offers</li>
+            <li>Library — online books &amp; a house-to-house borrowing program</li>
+            <li>Learning &amp; opportunities feed</li>
+            <li>Community connections &amp; experience exchange</li>
+            <li>Jobs available <strong>in your region</strong></li>
+          </ul>
+          <a class="btn btn-ghost-dark" href="#contact">Join free</a>
+        </article>
+
+        <article class="plan plan-pro reveal">
+          <div class="plan-flag">Most value</div>
+          <header><h3>NODAL Pro</h3><p class="price">Membership</p></header>
+          <ul>
+            <li>Everything in Member, plus —</li>
+            <li>Jobs <strong>matched specifically to you</strong></li>
+            <li>AI discovery of people, projects &amp; knowledge</li>
+            <li>Premium visibility within the network</li>
+            <li>Network intelligence: who's doing what, where &amp; how</li>
+            <li>Priority access &amp; pay-as-you-go premium tools</li>
+          </ul>
+          <a class="btn btn-primary" href="#contact">Go Pro</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= NETFLIX OF LEADERS ======================= -->
+  <section class="section leaders" id="knowledge">
+    <div class="wrap">
+      <p class="eyebrow reveal">A Netflix of leaders</p>
+      <h2 class="section-title reveal">Meet the changemakers building<br/> Latin America's cities.</h2>
+    </div>
+    <div class="leader-row reveal" id="leaderRow">
+      <!-- cards injected/static -->
+      <article class="leader-card"><div class="leader-photo"><span class="leader-initial">M</span></div><div class="leader-meta"><h3>Mariana R.</h3><p>Urban Researcher · Bogotá</p></div></article>
+      <article class="leader-card"><div class="leader-photo"><span class="leader-initial">D</span></div><div class="leader-meta"><h3>Diego A.</h3><p>Mobility Engineer · Lima</p></div></article>
+      <article class="leader-card"><div class="leader-photo"><span class="leader-initial">S</span></div><div class="leader-meta"><h3>Sofía M.</h3><p>City Planner · CDMX</p></div></article>
+      <article class="leader-card"><div class="leader-photo"><span class="leader-initial">L</span></div><div class="leader-meta"><h3>Lucas O.</h3><p>Civic Technologist · São Paulo</p></div></article>
+      <article class="leader-card"><div class="leader-photo"><span class="leader-initial">V</span></div><div class="leader-meta"><h3>Valeria C.</h3><p>Urban Economist · Santiago</p></div></article>
+      <article class="leader-card leader-more"><div class="leader-meta"><h3>+1,000 more</h3><p>Unlock full profiles with membership</p></div></article>
+    </div>
+  </section>
+
+  <!-- ======================= PARTNERS / TRACTION ======================= -->
+  <section class="section partners" id="partners">
+    <div class="wrap">
+      <p class="eyebrow light reveal">Traction</p>
+      <h2 class="section-title light reveal">Already working with the teams building the region.</h2>
+      <div class="logos reveal">
+        <span>Uber</span><span>UNACEM</span><span>Yango</span><span>UNNA</span><span>Vinci</span><span>ARUP</span>
+      </div>
+      <div class="traction reveal">
+        <div><span class="t-num">100+</span><span class="t-label">waitlist willing to pay US$100</span></div>
+        <div><span class="t-num">35</span><span class="t-label">participants in early paid programs</span></div>
+        <div><span class="t-num">LATAM</span><span class="t-label">active community in Peru &amp; the region</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="cta-band reveal">
+    <div class="wrap">
+      <h2>From intention to implementation.</h2>
+      <p>Become part of the infrastructure layer for urban collaboration.</p>
+      <a class="btn btn-primary btn-lg" href="#contact">Join NODAL</a>
+    </div>
+  </section>
+
+  <!-- ======================= GET IN TOUCH FOOTER ======================= -->
+  <footer class="footer" id="contact">
+    <div class="footer-top">
+      <img class="footer-illu" src="assets/community.png" alt="" aria-hidden="true"
+           onerror="this.style.display='none'"
+           onload="var f=document.querySelector('.footer-illu-fallback'); if(f) f.style.display='none';" />
+      <svg class="footer-illu-fallback" viewBox="0 0 380 320" aria-hidden="true">
+        <g fill="#59bc53" stroke="#1b2718" stroke-width="6" stroke-linejoin="round">
+          <circle cx="120" cy="95" r="34"/><path d="M70 300 V200 a50 50 0 0 1 100 0 V300 Z"/>
+          <circle cx="200" cy="78" r="38"/><path d="M146 300 V190 a54 54 0 0 1 108 0 V300 Z"/>
+          <circle cx="282" cy="98" r="33"/><path d="M232 300 V202 a50 50 0 0 1 100 0 V300 Z"/>
+        </g>
+      </svg>
+      <div class="footer-blob" aria-hidden="true"></div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="wrap">
+        <h2>Get in touch</h2>
+        <p class="footer-rights">2026 All Rights Reserved</p>
+        <p class="footer-email">Email: hello@nodal.la</p>
+        <div class="footer-divider"></div>
+        <div class="socials" aria-label="Social links">
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M13 22v-9h3l.5-4H13V6.5c0-1.1.3-1.9 1.9-1.9H17V1.1C16.6 1 15.4.9 14 .9 11.2.9 9.3 2.6 9.3 5.7V9H6v4h3.3v9H13z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.1.4.3 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.1-1 .3-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.1-.4-.3-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.1 1-.3 2.2-.4C8.4 2.2 8.8 2.2 12 2.2m0 1.9c-3.1 0-3.5 0-4.7.1-.9 0-1.4.2-1.7.3-.4.2-.7.4-1 .6-.3.3-.5.6-.6 1-.1.3-.3.8-.3 1.7C3.3 8.5 3.3 8.9 3.3 12s0 3.5.1 4.7c0 .9.2 1.4.3 1.7.2.4.4.7.6 1 .3.3.6.5 1 .6.3.1.8.3 1.7.3 1.2.1 1.6.1 4.7.1s3.5 0 4.7-.1c.9 0 1.4-.2 1.7-.3.4-.2.7-.4 1-.6.3-.3.5-.6.6-1 .1-.3.3-.8.3-1.7.1-1.2.1-1.6.1-4.7s0-3.5-.1-4.7c0-.9-.2-1.4-.3-1.7-.2-.4-.4-.7-.6-1-.3-.3-.6-.5-1-.6-.3-.1-.8-.3-1.7-.3-1.2-.1-1.6-.1-4.7-.1m0 3.3a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2m0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6m5.8-7.8a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0"/></svg></a>
+          <a href="#" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M16.6 5.8a4.3 4.3 0 0 1-1-2.8h-3.2v12.7a2.3 2.3 0 1 1-2.3-2.3c.2 0 .5 0 .7.1V8.2a5.6 5.6 0 0 0-.7 0 5.5 5.5 0 1 0 5.5 5.5V8.6a7.3 7.3 0 0 0 4.3 1.4V6.8a4.3 4.3 0 0 1-3.3-1"/></svg></a>
+          <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M23 7.5a3 3 0 0 0-2.1-2.1C19 4.9 12 4.9 12 4.9s-7 0-8.9.5A3 3 0 0 0 1 7.5 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.5a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23.5 12 31 31 0 0 0 23 7.5M9.8 15.3V8.7l5.7 3.3z"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
