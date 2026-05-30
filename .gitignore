@@ -1,0 +1,29 @@
+# --- AI / assistant tooling artifacts (do not commit) ---
+.neurotrace/
+.claude/
+.cursor/
+.cursorrules
+.aider*
+.continue/
+.codeium/
+.windsurf/
+.github/copilot-*
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# --- dependency / build output ---
+node_modules/
+dist/
+build/
+.cache/
+
+# --- env / secrets ---
+.env
+.env.*
+*.local
