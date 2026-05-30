@@ -25,7 +25,7 @@
   --muted:       #6e7a69;    /* secondary text / captions           */
   --concrete:    #8b9587;    /* faint labels                        */
   --hairline:    rgba(61,92,56,.16);
-  --black:       #1b2718;    /* very dark green (footer)            */
+  --black:       #000000;    /* footer bottom band — true black     */
 
   /* --- type (NODAL brand fonts) --- */
   --font-display: 'Montserrat', system-ui, -apple-system, sans-serif;
@@ -355,20 +355,84 @@ h1, h2, h3 {
 .cta-band .btn-primary:hover { background: var(--green-deep); color: #fff; }
 
 /* ============================ FOOTER ============================ */
-.footer { background: var(--black); }
-.footer-top { position: relative; background: linear-gradient(180deg, var(--beige) 0%, var(--plaster-2) 100%); min-height: 360px; overflow: hidden; }
-.footer-illu { position: absolute; left: clamp(20px,5vw,60px); bottom: 0; height: 300px; width: auto; }
-.footer-blob { position: absolute; right: -6%; top: -30%; width: 70%; height: 170%;
-  background: radial-gradient(45% 45% at 60% 50%, rgba(89,188,83,.85), rgba(89,188,83,0) 70%); filter: blur(20px); }
-.footer-bottom { background: var(--black); color: #fff; padding: clamp(40px,6vh,70px) 0 50px; position: relative; }
+.footer {
+  position: relative; overflow: hidden; background: var(--black);
+  --ft-h:   clamp(280px, 27vw, 400px);   /* height of the light panel  */
+  --illu-h: clamp(260px, 26vw, 380px);   /* rendered illustration size */
+}
+/* light upper panel */
+.footer-top {
+  position: relative; z-index: 1; height: var(--ft-h);
+  background: linear-gradient(180deg, var(--beige) 0%, var(--plaster-2) 100%);
+}
+/* organic green glow — large cloud in the upper-right that bleeds down the right
+   side and across the seam onto the black band (matches reference) */
+.footer-blob {
+  position: absolute; z-index: 2; pointer-events: none;
+  top: 0; right: -6%; width: 72%;
+  height: calc(var(--ft-h) + 170px);   /* panel + bleed into the dark band */
+  background:
+    radial-gradient(52% 48% at 62% 24%, rgba(89,188,83,.95) 0%, rgba(89,188,83,.5) 38%, rgba(89,188,83,0) 72%),
+    radial-gradient(38% 32% at 82% 90%, rgba(89,188,83,.95) 0%, rgba(89,188,83,0) 70%),
+    radial-gradient(24% 26% at 72% 56%, rgba(89,188,83,.55) 0%, rgba(89,188,83,0) 72%);
+  filter: blur(34px);
+}
+/* community illustration — transparent PNG, sits inside the light panel,
+   feet resting on the seam (it does NOT cross in front of the black band) */
+.footer-illu {
+  position: absolute; z-index: 4; left: clamp(14px, 5vw, 64px);
+  top: calc(var(--ft-h) - var(--illu-h));
+  height: var(--illu-h); width: auto; pointer-events: none;
+  filter: drop-shadow(0 8px 16px rgba(37,52,31,.16));
+}
+/* no z-index here: keeps the black background BELOW the glow (green shows on black)
+   while .wrap is lifted above it */
+.footer-bottom { position: relative; background: var(--black); color: #fff; padding: clamp(40px,6vh,70px) 0 50px; }
+.footer-bottom .wrap { position: relative; z-index: 3; }
 .footer-bottom h2 { font-size: clamp(40px,6vw,72px); font-weight: 800; letter-spacing: -.01em; }
 .footer-rights { margin-top: 30px; font-weight: 600; }
-.footer-email { margin-top: 14px; font-weight: 600; }
+.footer-email {
+  display: inline-block; margin-top: 14px; font-weight: 600; color: #fff;
+  text-decoration: none; transition: color .2s ease;
+}
+.footer-email:hover { color: var(--green-pastel); }
 .footer-divider { height: 1px; background: rgba(255,255,255,.25); margin: 40px 0 22px; max-width: 360px; }
 .socials { display: flex; gap: 22px; }
 .socials a { color: #fff; opacity: .9; transition: opacity .2s ease, transform .2s ease; }
 .socials a:hover { opacity: 1; transform: translateY(-2px); }
 .socials svg { width: 26px; height: 26px; fill: currentColor; }
+
+/* ============================ POLISH ============================ */
+/* sticky navbar shouldn't hide section headings when jumping via in-page nav */
+:where(section, footer)[id] { scroll-margin-top: 104px; }
+
+/* keyboard focus — visible green ring, never shown on mouse click */
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+  outline: 2px solid var(--green-bright); outline-offset: 3px; border-radius: 4px;
+}
+.btn:focus-visible { outline-offset: 4px; }
+
+/* lift static cards on hover for tactile depth (rows/match cards already animate) */
+.card-glass, .stat, .plan { transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, background-color .28s ease, border-color .28s ease; }
+.card-glass:hover { transform: translateY(-4px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+.stat:hover { transform: translateY(-5px); box-shadow: 0 18px 40px rgba(61,92,56,.16); }
+.plan:not(.plan-pro):hover { transform: translateY(-5px); background: rgba(255,255,255,.1); }
+.plan-pro:hover { transform: translateY(-5px); box-shadow: 0 22px 48px rgba(0,0,0,.2); }
+
+/* depth on primary buttons + sharper match-card press */
+.btn-primary:hover { box-shadow: 0 12px 26px rgba(89,188,83,.32); }
+.match-card:hover { transform: translateY(-4px); box-shadow: 0 22px 48px rgba(61,92,56,.22); }
+
+/* partner logos warm up on hover */
+.logos span { transition: color .25s ease; cursor: default; }
+.logos span:hover { color: var(--green-bright); }
+
+/* interactive tags */
+.tags span { transition: background-color .2s ease, color .2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card-glass, .stat, .plan, .match-card, .leader-card, .btn, .socials a { transition: none; }
+}
 
 /* ============================ RESPONSIVE ============================ */
 @media (max-width: 980px) {
@@ -397,6 +461,7 @@ h1, h2, h3 {
   .brand-wordmark { height: 32px; }
   .brand-mark { width: 70px; height: 74px; }
   .hero-cta { flex-direction: column; align-items: flex-start; }
+  .footer { --ft-h: 240px; --illu-h: 215px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; scroll-behavior: auto; }
