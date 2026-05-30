@@ -52,8 +52,8 @@
       { x:430, y: 70, label:'Investor' },          // 1
       { x:720, y:110, label:'NGO / Foundation' },  // 2
       { x:110, y:290, label:'Architect' },         // 3
-      { x:310, y:235, label:'Researcher' },        // 4  hub
-      { x:560, y:250, label:'Mobility Engineer' }, // 5  hub
+      { x:310, y:235, label:'Researcher' },        // 4
+      { x:560, y:250, label:'Mobility Engineer' }, // 5
       { x:800, y:300, label:'Urban Economist' },   // 6
       { x:250, y:430, label:'Community Leader' },  // 7
       { x:540, y:440, label:'Civil Engineer' },    // 8
