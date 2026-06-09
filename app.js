@@ -1,11 +1,8 @@
-/* =========================================================
-   NODAL — page interactions
-   • scroll reveals  • mobile nav  • match card  • matching graph
-   ========================================================= */
+/* landing interactions: scroll reveals, match card, network graph */
 (() => {
   const NS = 'http://www.w3.org/2000/svg';
 
-  /* ---------- scroll reveal ---------- */
+
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { threshold: 0.15 });
@@ -14,15 +11,6 @@
     io.observe(el);
   });
 
-  /* ---------- mobile nav ---------- */
-  const nav = document.querySelector('.navbar');
-  const toggle = document.getElementById('navToggle');
-  if (toggle) {
-    toggle.addEventListener('click', () => nav.classList.toggle('open'));
-    nav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => nav.classList.remove('open')));
-  }
-
-  /* ---------- match card (professional Tinder) ---------- */
   const stack = document.getElementById('matchStack');
   if (stack) {
     const card = stack.querySelector('.match-card');

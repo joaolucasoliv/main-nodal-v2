@@ -1,10 +1,5 @@
-/* 
-     • nodes  -> circle positions (x, y) and radius r
-     • edges  -> which nodes connect, by index   e.g. [0, 3]
-     • timing -> pop / draw speeds
-*/
-
-
+/* logo mark: CONFIG.nodes are circle positions in the 120x130 viewBox,
+   edges connect node indices, timing tunes the intro animation */
 (() => {
   const CONFIG = {
     // node positions in the SVG's 120 x 130 coordinate space

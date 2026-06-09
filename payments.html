@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>NODAL Pro — Monthly membership</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Nunito:wght@400;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="pay-page">
+
+  <header class="navbar" id="top">
+    <a class="brand" href="index.html">
+      <img class="brand-wordmark" src="assets/nodal-wordmark.png"
+           alt="NODAL — Nodos Urbanos de América Latina" />
+    </a>
+
+    <nav class="nav-main">
+      <a href="index.html#membership">Opportunities</a>
+      <a href="index.html#knowledge">Knowledge</a>
+      <a href="index.html#membership">Resources</a>
+    </nav>
+
+    <nav class="nav-account">
+      <a href="index.html#profile">Profile</a>
+      <a href="index.html#platform">Your Network</a>
+      <a class="btn btn-pill btn-nav" href="index.html#contact">Join NODAL</a>
+    </nav>
+
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <main>
+    <section class="pay-hero">
+      <div class="wrap">
+        <p class="eyebrow">Membership · Payments preview</p>
+        <h1 class="pay-title">One membership.<br/><em>Billed monthly.</em></h1>
+        <p class="pay-sub">Monthly billing is coming to NODAL. This page is a preview of how it
+          will work, with founding pricing that may change at launch.</p>
+        <span class="pay-flag">Coming soon</span>
+      </div>
+    </section>
+
+    <section class="pay-body">
+      <div class="wrap pay-grid">
+
+        <div class="pay-plans">
+          <div class="cycle" role="group" aria-label="Billing cycle">
+            <button type="button" class="cycle-btn is-on" id="cycleMonthly" aria-pressed="true">Monthly</button>
+            <button type="button" class="cycle-btn" id="cycleAnnual" aria-pressed="false">Annual <span class="cycle-save">2 months free</span></button>
+          </div>
+
+          <article class="pay-plan">
+            <header>
+              <h2>Member</h2>
+              <p class="pay-price"><span class="pay-amount">Free</span></p>
+            </header>
+            <ul>
+              <li>Courses NODAL offers</li>
+              <li>Library &amp; borrowing program</li>
+              <li>Learning &amp; opportunities feed</li>
+              <li>Jobs available in your region</li>
+            </ul>
+            <a class="btn btn-ghost" href="index.html#contact">Join free</a>
+          </article>
+
+          <article class="pay-plan pay-plan-pro">
+            <div class="plan-flag">Most value</div>
+            <header>
+              <h2>NODAL Pro</h2>
+              <p class="pay-price">
+                <span class="pay-amount" id="proPrice">US$10</span>
+                <span class="pay-per" id="proPer">/ month</span>
+              </p>
+              <p class="pay-price-note" id="proNote">Cancel anytime.</p>
+            </header>
+            <ul>
+              <li>Everything in Member, plus:</li>
+              <li>Jobs matched specifically to you</li>
+              <li>AI discovery of people, projects &amp; knowledge</li>
+              <li>Premium visibility within the network</li>
+              <li>Network intelligence: who's doing what, where &amp; how</li>
+            </ul>
+            <button type="button" class="btn btn-primary" id="selectPro">Select NODAL Pro</button>
+          </article>
+        </div>
+
+        <aside class="pay-summary" aria-label="Order summary">
+          <p class="pay-summary-kicker">Order summary (preview)</p>
+          <h2>NODAL Pro</h2>
+          <dl>
+            <div><dt>Billing cycle</dt><dd id="sumCycle">Monthly</dd></div>
+            <div><dt>Price</dt><dd id="sumPrice">US$10 / month</dd></div>
+            <div><dt>Renews</dt><dd id="sumRenews">Every month, until you cancel</dd></div>
+          </dl>
+          <div class="pay-methods">
+            <p>Pay with</p>
+            <span>Card</span><span>Mercado Pago</span><span>Yape · Plin</span>
+          </div>
+          <a class="btn btn-primary btn-block" href="mailto:hello@nodal.la?subject=NODAL%20Pro%20launch%20notice">Notify me at launch</a>
+          <p class="pay-secure">Payments will be processed by a certified provider (PCI&nbsp;DSS).
+            NODAL never sees or stores your card details.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="pay-faq">
+      <div class="wrap">
+        <p class="eyebrow">FAQ</p>
+        <h2 class="section-title">Billing questions</h2>
+        <details>
+          <summary>Can I cancel anytime?</summary>
+          <p>Yes. Monthly plans stop at the end of the paid month; annual plans at the end of the
+            paid year. Your free Member account stays active either way.</p>
+        </details>
+        <details>
+          <summary>What currency will I be charged in?</summary>
+          <p>Prices are set in US dollars. Local payment methods (Mercado Pago, Yape, Plin) will
+            charge the equivalent in your local currency at checkout.</p>
+        </details>
+        <details>
+          <summary>Will I get a receipt?</summary>
+          <p>Every charge comes with an emailed receipt, and invoices for organisations will be
+            available on request.</p>
+        </details>
+        <details>
+          <summary>Is this pricing final?</summary>
+          <p>No — this is founding-member preview pricing. Whatever you see at launch is what
+            early members keep.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer pay-footer" id="contact">
+    <div class="footer-bottom">
+      <div class="wrap">
+        <h2>Get in touch</h2>
+        <p class="footer-rights">2026 All Rights Reserved</p>
+        <a class="footer-email" href="mailto:hello@nodal.la">Email: hello@nodal.la</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="nav.js"></script>
+  <script src="payments.js"></script>
+</body>
+</html>
