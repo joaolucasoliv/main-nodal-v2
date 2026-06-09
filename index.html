@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>NODAL — Building the Infrastructure for Collaborative Urbanism</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,7 +14,7 @@
 </head>
 <body>
 
-  <!-- ======================= HEADER ======================= -->
+  <!-- header -->
   <header class="navbar" id="top">
     <a class="brand" href="#top" id="brand" title="Click logo to replay">
       <svg id="net" class="brand-mark" viewBox="0 0 120 130" aria-label="NODAL network mark"></svg>
@@ -36,10 +39,8 @@
     </button>
   </header>
 
-  <!-- Latin America plate — page-level cartographic backdrop on the right -->
   <img class="map-outline" src="assets/latam-map.png" alt="" aria-hidden="true" />
 
-  <!-- Network overlay — nodes = actors, edges = trusted relationships -->
   <svg class="hero-net" viewBox="0 0 320 420" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
     <g class="hn-edges" stroke-linecap="round" fill="none">
       <line x1="88"  y1="64"  x2="172" y2="118"/>
@@ -59,7 +60,7 @@
     </g>
   </svg>
 
-  <!-- ======================= HERO ======================= -->
+  <!-- hero -->
   <section class="hero" id="home">
     <div class="hero-atmos" aria-hidden="true"></div>
 
@@ -88,7 +89,7 @@
     </a>
   </section>
 
-  <!-- ======================= WHAT IS NODAL ======================= -->
+  <!-- about -->
   <section class="section about" id="about">
     <div class="wrap">
       <p class="eyebrow reveal">What is NODAL</p>
@@ -106,21 +107,21 @@
     </div>
   </section>
 
-  <!-- ======================= THE PROBLEM ======================= -->
+  <!-- problem -->
   <section class="section problem" id="problem">
     <div class="wrap">
       <p class="eyebrow light reveal">The problem</p>
       <h2 class="section-title light reveal">Urban projects keep failing — not for lack of<br/> money, but for lack of coordination.</h2>
       <div class="cards-3">
-        <article class="card-glass reveal">
+        <article class="card-flat reveal">
           <h3>Fragmented ecosystems</h3>
           <p>Actors don't connect at scale. Weak community engagement and no trusted local networks.</p>
         </article>
-        <article class="card-glass reveal">
+        <article class="card-flat reveal">
           <h3>Poor coordination</h3>
           <p>Limited access to relevant knowledge, opportunities and collaborators between actors.</p>
         </article>
-        <article class="card-glass reveal">
+        <article class="card-flat reveal">
           <h3>Wasted talent &amp; capital</h3>
           <p>Project delays, social conflict, inefficient deployment of capital, burnout and underused talent.</p>
         </article>
@@ -130,7 +131,7 @@
     </div>
   </section>
 
-  <!-- ======================= MARKET INSIGHT / STATS ======================= -->
+  <!-- market insight -->
   <section class="section insight" id="insight">
     <div class="wrap">
       <p class="eyebrow reveal">Market insight</p>
@@ -146,7 +147,7 @@
     </div>
   </section>
 
-  <!-- ======================= MATCHING PLATFORM (graph theory) ======================= -->
+  <!-- platform -->
   <section class="section platform" id="platform">
     <div class="wrap">
       <div class="platform-head">
@@ -175,7 +176,7 @@
     </div>
   </section>
 
-  <!-- ======================= PROFILE / PROFESSIONAL TINDER ======================= -->
+  <!-- profile -->
   <section class="section profile" id="profile">
     <div class="wrap profile-wrap">
       <div class="profile-copy">
@@ -191,7 +192,6 @@
         <a class="btn btn-primary reveal" href="#membership">Create your profile</a>
       </div>
 
-      <!-- swipeable match card -->
       <div class="match-stack reveal" id="matchStack">
         <article class="match-card">
           <div class="match-avatar"><span class="leader-initial">F</span></div>
@@ -220,7 +220,7 @@
     </div>
   </section>
 
-  <!-- ======================= MEMBERSHIP FREE / PAID ======================= -->
+  <!-- membership -->
   <section class="section membership" id="membership">
     <div class="wrap">
       <p class="eyebrow light reveal">Membership</p>
@@ -243,27 +243,26 @@
           <div class="plan-flag">Most value</div>
           <header><h3>NODAL Pro</h3><p class="price">Membership</p></header>
           <ul>
-            <li>Everything in Member, plus —</li>
+            <li>Everything in Member, plus:</li>
             <li>Jobs <strong>matched specifically to you</strong></li>
             <li>AI discovery of people, projects &amp; knowledge</li>
             <li>Premium visibility within the network</li>
             <li>Network intelligence: who's doing what, where &amp; how</li>
             <li>Priority access &amp; pay-as-you-go premium tools</li>
           </ul>
-          <a class="btn btn-primary" href="#contact">Go Pro</a>
+          <a class="btn btn-primary" href="payments.html">Go Pro</a>
         </article>
       </div>
     </div>
   </section>
 
-  <!-- ======================= NETFLIX OF LEADERS ======================= -->
+  <!-- leaders -->
   <section class="section leaders" id="knowledge">
     <div class="wrap">
       <p class="eyebrow reveal">A Netflix of leaders</p>
       <h2 class="section-title reveal">Meet the changemakers building<br/> Latin America's cities.</h2>
     </div>
     <div class="leader-row reveal" id="leaderRow">
-      <!-- cards injected/static -->
       <article class="leader-card"><div class="leader-photo"><span class="leader-initial">M</span></div><div class="leader-meta"><h3>Mariana R.</h3><p>Urban Researcher · Bogotá</p></div></article>
       <article class="leader-card"><div class="leader-photo"><span class="leader-initial">D</span></div><div class="leader-meta"><h3>Diego A.</h3><p>Mobility Engineer · Lima</p></div></article>
       <article class="leader-card"><div class="leader-photo"><span class="leader-initial">S</span></div><div class="leader-meta"><h3>Sofía M.</h3><p>City Planner · CDMX</p></div></article>
@@ -273,7 +272,7 @@
     </div>
   </section>
 
-  <!-- ======================= PARTNERS / TRACTION ======================= -->
+  <!-- partners -->
   <section class="section partners" id="partners">
     <div class="wrap">
       <p class="eyebrow light reveal">Traction</p>
@@ -298,7 +297,7 @@
     </div>
   </section>
 
-  <!-- ======================= GET IN TOUCH FOOTER ======================= -->
+  <!-- footer -->
   <footer class="footer" id="contact">
     <div class="footer-blob" aria-hidden="true"></div>
     <div class="footer-top"></div>
@@ -322,6 +321,7 @@
          alt="Three members of the NODAL community standing together" />
   </footer>
 
+  <script src="nav.js"></script>
   <script src="script.js"></script>
   <script src="app.js"></script>
 </body>
