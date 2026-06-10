@@ -31,6 +31,7 @@
     <nav class="nav-account">
       <a href="#profile">Profile</a>
       <a href="#platform">Your Network</a>
+      <a href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Sistema Urbano ↗</a>
       <a class="btn btn-pill btn-nav" href="#contact">Join NODAL</a>
     </nav>
 
@@ -165,7 +166,19 @@
       <div class="graph-panel reveal">
         <span class="graph-axis" aria-hidden="true">Fig.01 — Network of actors</span>
         <svg id="graph" viewBox="0 0 900 520" aria-label="Interactive network graph"></svg>
-        <p class="graph-hint">Hover a node to trace its connections</p>
+
+        <aside class="graph-card" id="graphCard" hidden aria-live="polite">
+          <button type="button" class="graph-card-close" id="gcClose" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          </button>
+          <p class="graph-card-kicker" id="gcType"></p>
+          <h3 id="gcName"></h3>
+          <p class="graph-card-desc" id="gcDesc"></p>
+          <p class="graph-card-sub">Connections · <span id="gcCount"></span></p>
+          <ul class="graph-card-links" id="gcLinks"></ul>
+        </aside>
+
+        <p class="graph-hint">Click a node to open its connections</p>
       </div>
 
       <ol class="steps reveal">
@@ -307,6 +320,7 @@
         <h2>Get in touch</h2>
         <p class="footer-rights">2026 All Rights Reserved</p>
         <a class="footer-email" href="mailto:hello@nodal.la">Email: hello@nodal.la</a>
+        <a class="footer-old" href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Previous website: sistemaurbano.org/nodal ↗</a>
         <div class="footer-divider"></div>
         <div class="socials" aria-label="Social links">
           <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M13 22v-9h3l.5-4H13V6.5c0-1.1.3-1.9 1.9-1.9H17V1.1C16.6 1 15.4.9 14 .9 11.2.9 9.3 2.6 9.3 5.7V9H6v4h3.3v9H13z"/></svg></a>
