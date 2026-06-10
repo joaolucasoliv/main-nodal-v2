@@ -36,19 +36,21 @@
   const svg = document.getElementById('graph');
   if (svg) {
     const N = [
-      { x:170, y:110, label:'City Government' },   // 0
-      { x:430, y: 70, label:'Investor' },          // 1
-      { x:720, y:110, label:'NGO / Foundation' },  // 2
-      { x:110, y:290, label:'Architect' },         // 3
-      { x:310, y:235, label:'Researcher' },        // 4
-      { x:560, y:250, label:'Mobility Engineer' }, // 5
-      { x:800, y:300, label:'Urban Economist' },   // 6
-      { x:250, y:430, label:'Community Leader' },  // 7
-      { x:540, y:440, label:'Civil Engineer' },    // 8
-      { x:430, y:330, label:'Project', hub:true }, // 9  centre / match target
+      { x:170, y:110, label:'City Government',  type:'Public sector',    desc:'Sets the priorities, permits and budgets that decide whether a project moves.' },              // 0
+      { x:430, y: 70, label:'Investor',         type:'Capital',          desc:'Deploys capital into projects — and needs trusted local signals to do it.' },                  // 1
+      { x:720, y:110, label:'NGO / Foundation', type:'Civil society',    desc:'Funds and runs programs where public capacity falls short.' },                                 // 2
+      { x:110, y:290, label:'Architect',        type:'Design talent',    desc:'Shapes the built form; abundant in the region, often disconnected from delivery.' },           // 3
+      { x:310, y:235, label:'Researcher',       type:'Knowledge',        desc:'Produces the evidence that de-risks decisions on the ground.' },                               // 4
+      { x:560, y:250, label:'Mobility Engineer',type:'Technical talent', desc:'Scarce, in-demand profile: 1–3K graduate each year across 22 countries.' },                    // 5
+      { x:800, y:300, label:'Urban Economist',  type:'Knowledge',        desc:'Reads the market and social value behind every intervention.' },                               // 6
+      { x:250, y:430, label:'Community Leader', type:'Community',        desc:'Holds the local trust that makes or breaks implementation.' },                                 // 7
+      { x:540, y:440, label:'Civil Engineer',   type:'Technical talent', desc:'Turns plans into structures — the delivery backbone.' },                                       // 8
+      { x:430, y:330, label:'Project', hub:true,type:'Match target',     desc:'A live urban project being staffed and coordinated through NODAL.' },                          // 9
     ];
+    // note: no direct [9,0] edge — it was collinear with [4,0]+[9,4] and
+    // rendered as a doubled line through the Researcher node
     const E = [
-      [9,4],[9,5],[9,0],[9,7],[9,8],
+      [9,4],[9,5],[9,7],[9,8],
       [4,3],[4,0],[4,7],[4,5],
       [5,1],[5,6],[5,2],[5,8],
       [0,1],[2,6],[8,7],
@@ -68,9 +70,53 @@
       return l;
     });
 
+    // node detail card
+    const card = document.getElementById('graphCard');
+    const gc = card && {
+      type:  document.getElementById('gcType'),
+      name:  document.getElementById('gcName'),
+      desc:  document.getElementById('gcDesc'),
+      count: document.getElementById('gcCount'),
+      links: document.getElementById('gcLinks'),
+      close: document.getElementById('gcClose'),
+    };
+    let selected = null;
+
+    function select(i) {
+      selected = i;
+      highlight(i);
+      if (!gc) return;
+      gc.type.textContent = N[i].type;
+      gc.name.textContent = N[i].label;
+      gc.desc.textContent = N[i].desc;
+      const peers = [...adj[i]];
+      gc.count.textContent = String(peers.length);
+      gc.links.replaceChildren(...peers.map((k) => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = N[k].label;
+        b.addEventListener('click', () => select(k));
+        li.appendChild(b);
+        return li;
+      }));
+      card.hidden = false;
+    }
+    function deselect() {
+      selected = null;
+      if (card) card.hidden = true;
+      reset();
+    }
+    if (gc) gc.close.addEventListener('click', deselect);
+    // clicking the empty panel area also closes the card
+    svg.addEventListener('click', (e) => { if (e.target === svg && selected !== null) deselect(); });
+
     const nodeGroups = N.map((n,i) => {
       const g = document.createElementNS(NS,'g');
       g.style.cursor = 'pointer'; g.style.opacity = '0';
+      g.setAttribute('role', 'button');
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('aria-label', `${n.label} — show connections`);
       const c = document.createElementNS(NS,'circle');
       c.setAttribute('cx',n.x); c.setAttribute('cy',n.y);
       c.setAttribute('r', n.hub ? 15 : 9);
@@ -88,7 +134,14 @@
       svg.appendChild(g);
 
       g.addEventListener('mouseenter', () => highlight(i));
-      g.addEventListener('mouseleave', reset);
+      g.addEventListener('mouseleave', () => (selected === null ? reset() : highlight(selected)));
+      g.addEventListener('focus', () => highlight(i));
+      g.addEventListener('blur', () => (selected === null ? reset() : highlight(selected)));
+      g.addEventListener('click', () => select(i));
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
+        if (e.key === 'Escape') deselect();
+      });
       return { g, c, t };
     });
 
