@@ -6,11 +6,13 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="description" content="NODAL connects capital, talent, knowledge and implementation across Latin American cities — a matching platform for collaborative urbanism." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cline x1='20' y1='22' x2='44' y2='42' stroke='%2359bc53' stroke-width='5'/%3E%3Ccircle cx='20' cy='22' r='11' fill='%233d5c38'/%3E%3Ccircle cx='44' cy='42' r='8' fill='%2359bc53'/%3E%3C/svg%3E" />
   <title>NODAL — Building the Infrastructure for Collaborative Urbanism</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Nunito:wght@400;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400..800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
 
@@ -25,11 +27,11 @@
     <nav class="nav-main">
       <a href="#membership">Opportunities</a>
       <a href="#knowledge">Knowledge</a>
-      <a href="#membership">Resources</a>
+      <a href="#resources">Resources</a>
     </nav>
 
     <nav class="nav-account">
-      <a href="#profile">Profile</a>
+      <a href="profile.html">Profile</a>
       <a href="#platform">Your Network</a>
       <a href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Sistema Urbano ↗</a>
       <a class="btn btn-pill btn-nav" href="#contact">Join NODAL</a>
@@ -89,6 +91,14 @@
       <span class="scroll-cue-line"></span>scroll
     </a>
   </section>
+
+  <!-- ticker -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span class="ticker-seq">From intention to implementation&nbsp;· <mark>Connect</mark>&nbsp;· Learn&nbsp;· <mark>Implement</mark>&nbsp;· 22 countries&nbsp;· One network&nbsp;·&nbsp;</span>
+      <span class="ticker-seq">From intention to implementation&nbsp;· <mark>Connect</mark>&nbsp;· Learn&nbsp;· <mark>Implement</mark>&nbsp;· 22 countries&nbsp;· One network&nbsp;·&nbsp;</span>
+    </div>
+  </div>
 
   <!-- about -->
   <section class="section about" id="about">
@@ -153,10 +163,10 @@
     <div class="wrap">
       <div class="platform-head">
         <div>
-          <p class="eyebrow light reveal">The core idea</p>
-          <h2 class="section-title light reveal">A matching platform built on the logic of networks.</h2>
+          <p class="eyebrow reveal">The core idea</p>
+          <h2 class="section-title reveal">A matching platform built on the logic of networks.</h2>
         </div>
-        <p class="platform-intro light reveal">
+        <p class="platform-intro reveal">
           Every person and organisation is a <strong>node</strong>. Every trusted relationship is an
           <strong>edge</strong>. Together they form the graph of Latin American urbanism — and NODAL
           finds the connections that make projects happen.
@@ -233,15 +243,26 @@
     </div>
   </section>
 
+  <!-- quote -->
+  <section class="section quote">
+    <div class="wrap">
+      <figure>
+        <blockquote class="reveal">&ldquo;Projects don&rsquo;t fail for lack of money. They fail when the
+          right people <span class="q-hl">never meet</span>.&rdquo;</blockquote>
+        <figcaption class="reveal">The idea behind NODAL</figcaption>
+      </figure>
+    </div>
+  </section>
+
   <!-- membership -->
   <section class="section membership" id="membership">
     <div class="wrap">
       <p class="eyebrow light reveal">Membership</p>
-      <h2 class="section-title light reveal">Start free. Go further with NODAL Pro.</h2>
+      <h2 class="section-title light reveal">Start free. Unlock the full network.</h2>
 
       <div class="plans">
         <article class="plan reveal">
-          <header><h3>Member</h3><p class="price">Free</p></header>
+          <header><h3>Free</h3><p class="price">US$0 — always</p></header>
           <ul>
             <li>Courses NODAL offers</li>
             <li>Library — online books &amp; a house-to-house borrowing program</li>
@@ -254,16 +275,16 @@
 
         <article class="plan plan-pro reveal">
           <div class="plan-flag">Most value</div>
-          <header><h3>NODAL Pro</h3><p class="price">Membership</p></header>
+          <header><h3>Membership</h3><p class="price">US$10 / month</p></header>
           <ul>
-            <li>Everything in Member, plus:</li>
+            <li>Everything in Free, plus:</li>
             <li>Jobs <strong>matched specifically to you</strong></li>
             <li>AI discovery of people, projects &amp; knowledge</li>
             <li>Premium visibility within the network</li>
             <li>Network intelligence: who's doing what, where &amp; how</li>
             <li>Priority access &amp; pay-as-you-go premium tools</li>
           </ul>
-          <a class="btn btn-primary" href="payments.html">Go Pro</a>
+          <a class="btn btn-primary" href="payments.html">See membership</a>
         </article>
       </div>
     </div>
@@ -282,6 +303,35 @@
       <article class="leader-card"><div class="leader-photo"><span class="leader-initial">L</span></div><div class="leader-meta"><h3>Lucas O.</h3><p>Civic Technologist · São Paulo</p></div></article>
       <article class="leader-card"><div class="leader-photo"><span class="leader-initial">V</span></div><div class="leader-meta"><h3>Valeria C.</h3><p>Urban Economist · Santiago</p></div></article>
       <article class="leader-card leader-more"><div class="leader-meta"><h3>+1,000 more</h3><p>Unlock full profiles with membership</p></div></article>
+    </div>
+  </section>
+
+  <!-- knowledge & resources -->
+  <section class="section resources" id="resources">
+    <div class="wrap">
+      <p class="eyebrow reveal">Knowledge &amp; resources</p>
+      <h2 class="section-title reveal">Learn from the network,<br/> not only in it.</h2>
+      <div class="res-grid">
+        <article class="res-card reveal">
+          <span class="res-num">R.01</span>
+          <h3>Courses</h3>
+          <p>Live and self-paced programs taught by practitioners who are building Latin American
+            cities right now.</p>
+        </article>
+        <article class="res-card reveal">
+          <span class="res-num">R.02</span>
+          <h3>Library</h3>
+          <p>Online books plus a house-to-house borrowing program that moves printed knowledge
+            through the community.</p>
+        </article>
+        <article class="res-card reveal">
+          <span class="res-num">R.03</span>
+          <h3>Opportunities feed</h3>
+          <p>Jobs, grants and open calls curated by region &mdash; matched to your profile with
+            membership.</p>
+        </article>
+      </div>
+      <a class="link-arrow reveal" href="#membership">Explore membership</a>
     </div>
   </section>
 
@@ -331,12 +381,12 @@
       </div>
     </div>
 
-    <img class="footer-illu" src="assets/nodal-community.png"
+    <img class="footer-illu" src="assets/nodal-community.png" loading="lazy"
          alt="Three members of the NODAL community standing together" />
   </footer>
 
-  <script src="nav.js"></script>
-  <script src="script.js"></script>
-  <script src="app.js"></script>
+  <script src="nav.js?v=8"></script>
+  <script src="script.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
