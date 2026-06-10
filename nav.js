@@ -1,8 +1,38 @@
-/* mobile navigation, shared by all pages */
+/* navigation, shared by all pages: mobile menu + press glint */
 (() => {
   const nav = document.querySelector('.navbar');
   const toggle = document.getElementById('navToggle');
   if (!nav || !toggle) return;
   toggle.addEventListener('click', () => nav.classList.toggle('open'));
   nav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => nav.classList.remove('open')));
+
+  // wordmark contrast: white while a dark section is under the glass bar, black otherwise
+  const darkSections = document.querySelectorAll(
+    '.problem, .platform, .quote, .membership, .partners, .cta-band, .footer-bottom');
+  if (darkSections.length) {
+    const checkDark = () => {
+      const navH = nav.offsetHeight;
+      const overDark = [...darkSections].some((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top < navH && r.bottom > 0;
+      });
+      nav.classList.toggle('nav-dark', overDark);
+    };
+    window.addEventListener('scroll', checkDark, { passive: true });
+    window.addEventListener('resize', checkDark, { passive: true });
+    checkDark();
+  }
+
+  // liquid-glass press glint: light burst centred on the press point
+  nav.querySelectorAll('.nav-main a, .nav-account a').forEach((a) => {
+    a.addEventListener('pointerdown', (e) => {
+      const r = a.getBoundingClientRect();
+      a.style.setProperty('--gx', `${e.clientX - r.left}px`);
+      a.style.setProperty('--gy', `${e.clientY - r.top}px`);
+      a.classList.remove('glint');
+      void a.offsetWidth;   // restart the animation
+      a.classList.add('glint');
+    });
+    a.addEventListener('animationend', () => a.classList.remove('glint'));
+  });
 })();
