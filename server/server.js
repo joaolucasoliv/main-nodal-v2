@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { createStore, addFollow, recordInteraction } from './store.js';
 import { recommend } from './engine.js';
 import { createCache, MemoryCache } from './cache.js';
+import { paymentsConfig, createCheckoutSession, CYCLES } from './payments.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const REC_TTL_MS = 5 * 60 * 1000;                 // 5-minute cache, per spec
@@ -114,7 +115,7 @@ async function serveStatic(req, res, pathname) {
   }
 }
 
-export function createApp({ store = createStore(), cache = new MemoryCache() } = {}) {
+export function createApp({ store = createStore(), cache = new MemoryCache(), payments = { config: paymentsConfig(), fetchImpl: fetch } } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       const { pathname } = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -171,6 +172,20 @@ export function createApp({ store = createStore(), cache = new MemoryCache() } =
         // graph changed — both parties' recommendations are stale
         await cache.del(recKey(userId), recKey(targetId));
         send(res, 200, { ok: true, userId, targetId, action });
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/api/checkout') {
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const body = await readJsonBody(req);
+        if (body.plan !== 'membership' || !CYCLES.has(body.cycle)) {
+          send(res, 400, { error: 'invalid plan or cycle' });
+          return;
+        }
+        if (!payments.config) { send(res, 501, { error: 'payments not configured', preview: true }); return; }
+        const origin = `http://${req.headers.host ?? 'localhost'}`;
+        const session = await createCheckoutSession({ cycle: body.cycle, origin }, payments.config, payments.fetchImpl);
+        send(res, 200, session);
         return;
       }
 

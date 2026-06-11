@@ -3,14 +3,21 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createApp } from './server.js';
 
-async function boot(t) {
-  const server = createApp();
+async function bootApp(t, server) {
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => server.close());
   const { port } = server.address();
   return `http://127.0.0.1:${port}`;
 }
+const boot = (t) => bootApp(t, createApp());
+
+const postJson = (base, path, body, headers = {}) =>
+  fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
 
 test('GET /api/recommendations/:userId — MISS then HIT, ranked payload', async (t) => {
   const base = await boot(t);
@@ -80,6 +87,51 @@ test('cross-origin POSTs are rejected', async (t) => {
     body: JSON.stringify({ targetId: 'flavia' }),
   });
   assert.equal(r.status, 403);
+});
+
+test('POST /api/checkout without configuration returns 501 preview', async (t) => {
+  const base = await bootApp(t, createApp({ payments: { config: null } }));
+  const res = await postJson(base, '/api/checkout', { plan: 'membership', cycle: 'monthly' });
+  assert.equal(res.status, 501);
+  assert.equal((await res.json()).preview, true);
+});
+
+test('POST /api/checkout validates plan and cycle', async (t) => {
+  const base = await boot(t);
+  const badCycle = await postJson(base, '/api/checkout', { plan: 'membership', cycle: 'weekly' });
+  assert.equal(badCycle.status, 400);
+  const badPlan = await postJson(base, '/api/checkout', { plan: 'gold', cycle: 'monthly' });
+  assert.equal(badPlan.status, 400);
+});
+
+test('POST /api/checkout rejects cross-origin', async (t) => {
+  const base = await boot(t);
+  const res = await postJson(base, '/api/checkout', { plan: 'membership', cycle: 'monthly' },
+    { Origin: 'https://evil.example' });
+  assert.equal(res.status, 403);
+});
+
+test('configured checkout creates a Stripe session via REST', async (t) => {
+  let captured;
+  const fakeFetch = async (url, opts) => {
+    captured = { url, opts };
+    return { ok: true, json: async () => ({ url: 'https://checkout.stripe.com/c/pay/cs_test_123' }) };
+  };
+  const payments = {
+    config: { secretKey: 'sk_test_x', prices: { monthly: 'price_m', annual: 'price_a' } },
+    fetchImpl: fakeFetch,
+  };
+  const base = await bootApp(t, createApp({ payments }));
+  const res = await postJson(base, '/api/checkout', { plan: 'membership', cycle: 'annual' });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).url, 'https://checkout.stripe.com/c/pay/cs_test_123');
+  assert.equal(captured.url, 'https://api.stripe.com/v1/checkout/sessions');
+  assert.equal(captured.opts.headers.Authorization, 'Bearer sk_test_x');
+  const form = new URLSearchParams(captured.opts.body.toString());
+  assert.equal(form.get('mode'), 'subscription');
+  assert.equal(form.get('line_items[0][price]'), 'price_a');
+  assert.equal(form.get('line_items[0][quantity]'), '1');
+  assert.match(form.get('success_url'), /payments\.html\?checkout=success$/);
 });
 
 test('static serving: pages resolve, traversal does not', async (t) => {
