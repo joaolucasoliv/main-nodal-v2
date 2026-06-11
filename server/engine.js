@@ -8,10 +8,30 @@
 
 import { getEngagement } from './store.js';
 
-export const WEIGHTS = { interests: 0.35, mutuals: 0.25, engagement: 0.25, activity: 0.15 };
+/* NOTE: the "How matching works" tab on the landing page displays these
+   weights — keep index.html's sig-bars in sync when changing them */
+export const WEIGHTS = { interests: 0.30, mutuals: 0.20, engagement: 0.20, activity: 0.10, city: 0.10, complement: 0.10 };
 export const DECAY = 0.5;        // score multiplier per extra hop
 export const MAX_DEPTH = 3;
+export const LINKEDIN_BOOST = 1.05;   // verifiability prior on the final score
 const MIX = { traversal: 0.45, direct: 0.30, cf: 0.25 };
+
+/* complementary disciplines — pairs that historically need each other on projects */
+const COMPLEMENTS = [
+  ['research', 'engineer'], ['research', 'technolog'], ['research', 'designer'],
+  ['planner', 'community'], ['planner', 'economist'], ['planner', 'anthropolog'],
+  ['architect', 'community'], ['engineer', 'community'],
+];
+
+export const cityScore = (a, b) => (a.city === b.city ? 1 : 0);
+
+export function complementScore(a, b) {
+  const ra = a.role.toLowerCase(), rb = b.role.toLowerCase();
+  for (const [x, y] of COMPLEMENTS) {
+    if ((ra.includes(x) && rb.includes(y)) || (ra.includes(y) && rb.includes(x))) return 1;
+  }
+  return 0;
+}
 
 const jaccard = (a, b) => {
   const A = new Set(a), B = new Set(b);
@@ -48,7 +68,9 @@ export function edgeWeight(store, adj, a, b) {
     WEIGHTS.interests  * jaccard(ua.interests, ub.interests) +
     WEIGHTS.mutuals    * mutualScore(adj, a, b) +
     WEIGHTS.engagement * (engagement / (engagement + 3)) +   // saturating
-    WEIGHTS.activity   * jaccard(ua.active, ub.active)
+    WEIGHTS.activity   * jaccard(ua.active, ub.active) +
+    WEIGHTS.city       * cityScore(ua, ub) +
+    WEIGHTS.complement * complementScore(ua, ub)
   );
 }
 
@@ -117,11 +139,12 @@ export function recommend(store, userId, { limit = 6 } = {}) {
   const results = [];
   for (const [id, user] of store.users) {
     if (id === userId || following.has(id)) continue;
-    const score =
+    let score =
       MIX.traversal * (traversal.get(id) ?? 0) +
       MIX.direct    * (direct.get(id) ?? 0) +
       MIX.cf        * (cf.get(id) ?? 0);
     if (score <= 0) continue;
+    if (user.linkedin) score *= LINKEDIN_BOOST;
 
     const shared = me.interests.filter((i) => user.interests.includes(i));
     let mutuals = 0;
@@ -134,7 +157,13 @@ export function recommend(store, userId, { limit = 6 } = {}) {
       city: user.city,
       interests: user.interests,
       score: Number(score.toFixed(4)),
-      reasons: { sharedInterests: shared, mutualConnections: mutuals, sameCity: user.city === me.city },
+      reasons: {
+        sharedInterests: shared,
+        mutualConnections: mutuals,
+        sameCity: user.city === me.city,
+        complementaryRole: complementScore(me, user) ? user.role : null,
+        hasLinkedin: Boolean(user.linkedin),
+      },
     });
   }
   results.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));

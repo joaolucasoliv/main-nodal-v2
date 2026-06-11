@@ -51,9 +51,13 @@
     }));
     const shared = p.reasons.sharedInterests.slice(0, 2).map(cap).join(' · ');
     const mutuals = p.reasons.mutualConnections;
+    const extras = [];
+    if (p.reasons.sameCity) extras.push('same city');
+    if (p.reasons.complementaryRole) extras.push('complementary role');
     els.why.textContent = `${p.matchPct}% match` +
-      (shared ? ` — ${shared}` : '') +
-      (mutuals ? ` · ${mutuals} mutual connection${mutuals > 1 ? 's' : ''}` : '');
+      (shared ? ` · ${shared}` : '') +
+      (mutuals ? ` · ${mutuals} mutual connection${mutuals > 1 ? 's' : ''}` : '') +
+      (extras.length ? ` · ${extras.join(' · ')}` : '');
   }
 
   async function api(path, body) {
