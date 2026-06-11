@@ -1,0 +1,12 @@
+{
+  "name": "nodal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NODAL landing site + recommendation API",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test server/*.test.js"
+  }
+}

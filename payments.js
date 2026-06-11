@@ -19,6 +19,8 @@
     price:   document.getElementById('sumPrice'),
     renews:  document.getElementById('sumRenews'),
   };
+  // bail out cleanly if the page structure changes — never throw on load
+  if (Object.values(els).some((el) => !el)) return;
 
   function setCycle(key) {
     const p = PRICING[key];
@@ -40,7 +42,11 @@
   els.annual.addEventListener('click', () => setCycle('annual'));
 
   // bring the summary into view so the selection is visible on mobile
-  document.getElementById('selectPro').addEventListener('click', () => {
-    document.querySelector('.pay-summary').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
+  const selectPro = document.getElementById('selectPro');
+  const summary = document.querySelector('.pay-summary');
+  if (selectPro && summary) {
+    selectPro.addEventListener('click', () => {
+      summary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
 })();
