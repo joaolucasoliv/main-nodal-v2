@@ -6,13 +6,13 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta name="description" content="Preview of the NODAL member dashboard — a dynamic profile built as a role stack: practitioner, mentor, connector and more, all in one node." />
+  <meta name="description" content="Preview of the NODAL member dashboard: a dynamic profile built as a role stack of practitioner, mentor, connector and more, all in one node." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cline x1='20' y1='22' x2='44' y2='42' stroke='%2359bc53' stroke-width='5'/%3E%3Ccircle cx='20' cy='22' r='11' fill='%233d5c38'/%3E%3Ccircle cx='44' cy='42' r='8' fill='%2359bc53'/%3E%3C/svg%3E" />
-  <title>NODAL — Your dashboard</title>
+  <title>NODAL · Your dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="dashboard.css?v=4" />
+  <link rel="stylesheet" href="dashboard.css?v=6" />
 </head>
 <body class="dash-page">
 
@@ -21,7 +21,7 @@
   <!-- ===================== sidebar ===================== -->
   <aside class="side">
     <a class="side-brand" href="index.html">
-      <img src="assets/nodal-wordmark.png" alt="NODAL — back to the site" />
+      <img src="assets/nodal-wordmark.png" alt="NODAL · back to the site" />
     </a>
 
     <nav class="side-nav" aria-label="Dashboard sections">
@@ -94,24 +94,24 @@
       <div class="greet">
         <div>
           <h1><span id="greetWord">Good morning</span>, <span id="userName">Camila</span>.</h1>
-          <p id="greetSub">Your node is active in <strong>3 spaces</strong> this week — 2 new matches,
+          <p id="greetSub">Your node is active in <strong>3 spaces</strong> this week: 2 new matches,
             one mentorship session today, and your Ambassador path is 4 of 6 months in.</p>
         </div>
-        <p class="greet-note"><span id="userPlace">12.04°S — 77.04°W · Lima</span><br/><span>Member node · preview</span></p>
+        <p class="greet-note"><span id="userPlace">12.04°S · 77.04°W · Lima</span><br/><span>Member node · preview</span></p>
       </div>
 
       <div class="ov-grid">
 
         <!-- role stack -->
-        <article class="card card-roles rise">
+        <article class="card card-roles">
           <h2>Role stack</h2>
-          <p class="card-hint">One node, several roles at once — roles grow, they don't replace each other.</p>
+          <p class="card-hint">One node, several roles at once. Roles grow, they don't replace each other.</p>
           <ul class="rolelist" id="roleList">
             <li><span class="role-pill r-validated">Community Member</span><span class="role-scope">since 2025</span></li>
             <li><span class="role-pill r-validated">Skilled Practitioner</span><span class="role-scope">Public space</span></li>
             <li><span class="role-pill r-validated">Mentor</span><span class="role-scope">Participatory processes</span></li>
             <li><span class="role-pill r-validated">Local Connector</span><span class="role-scope">Lima</span></li>
-            <li><span class="role-pill r-path">Ambassador</span><span class="role-scope">in progress — 4/6 months</span></li>
+            <li><span class="role-pill r-path">Ambassador</span><span class="role-scope">in progress · 4/6 months</span></li>
           </ul>
           <div class="rolemix" id="roleMix" aria-label="Activity mix this quarter: practice 45%, mentoring 30%, connecting 25%">
             <span class="mix mix-a"></span><span class="mix mix-b"></span><span class="mix mix-c"></span>
@@ -127,7 +127,7 @@
         </article>
 
         <!-- contributions -->
-        <article class="card card-contrib rise">
+        <article class="card card-contrib">
           <h2>Contributions</h2>
           <div class="stat-row">
             <div class="stat"><span class="stat-n">14</span><span class="stat-l">actions<br/>this quarter</span></div>
@@ -145,7 +145,7 @@
         </article>
 
         <!-- trust ladder -->
-        <article class="card card-trust rise">
+        <article class="card card-trust">
           <h2>Trust ladder</h2>
           <p class="card-hint">Levels belong to topics and skills, never to the whole person.</p>
           <ul class="trustlist" id="trustList">
@@ -169,13 +169,13 @@
         </article>
 
         <!-- mentoring -->
-        <article class="card card-dark rise">
+        <article class="card card-dark">
           <h2>Mentoring</h2>
           <div class="stat-row">
             <div class="stat"><span class="stat-n" id="mentorHours">03:45<em>h</em></span><span class="stat-l">this<br/>month</span></div>
             <div class="stat"><span class="stat-n" id="mentorMentees">2</span><span class="stat-l">active<br/>mentees</span></div>
           </div>
-          <p class="dark-note" id="mentorNote">You mentor in <strong>participatory processes</strong> — and you're a mentee
+          <p class="dark-note" id="mentorNote">You mentor in <strong>participatory processes</strong>, and you're a mentee
             in <strong>urban data</strong>. That asymmetry is the point.</p>
           <a class="pill-btn" href="#growth" id="mentorCta">Next session · Thu 18:00</a>
         </article>
@@ -186,7 +186,7 @@
     <section class="block" id="growth">
       <div class="block-head">
         <h2 class="block-title">Growth paths</h2>
-        <p class="block-sub">Four branches from one trunk — hold positions on several at once.</p>
+        <p class="block-sub">Four branches from one trunk. Hold positions on several at once.</p>
       </div>
 
       <div class="growth-grid">
@@ -236,7 +236,7 @@
     <section class="block" id="badges">
       <div class="block-head">
         <h2 class="block-title">Badges &amp; recognition</h2>
-        <p class="block-sub">Every badge unlocks something — visibility, programs, paid work. Never decoration.</p>
+        <p class="block-sub">Every badge unlocks something: visibility, programs, paid work. Never decoration.</p>
       </div>
       <div class="badge-grid" id="badgeGrid"></div>
     </section>
@@ -245,11 +245,11 @@
     <section class="block" id="assessment">
       <div class="block-head">
         <h2 class="block-title">Where are you today?</h2>
-        <p class="block-sub">Re-rate yourself anytime — your trust ladder, suggested track and open paths update with you.</p>
+        <p class="block-sub">Re-rate yourself anytime. Your trust ladder, suggested track and open paths update with you.</p>
       </div>
 
       <div class="assess-grid">
-        <article class="card card-assess rise">
+        <article class="card card-assess">
           <div class="assess-topics" id="assessTopics"></div>
           <div class="assess-ind">
             <div class="ind">
@@ -267,7 +267,7 @@
           </div>
         </article>
 
-        <article class="card card-track rise" aria-live="polite">
+        <article class="card card-track" aria-live="polite">
           <h2>Suggested track</h2>
           <p class="track-name" id="trackName">Leader / Mentor potential</p>
           <p class="track-why" id="trackWhy">Level 3+ in a topic, transmission experience, and you offer mentoring.</p>
@@ -276,7 +276,7 @@
               validation call → one trial session → Mentor badge.</p>
             <button type="button" class="btn-green" id="fastTrackBtn">Start mentor application</button>
           </div>
-          <p class="track-note">Reference (L4) is granted by NODAL validation — self-assessment caps at Proficient.</p>
+          <p class="track-note">Reference (L4) is granted by NODAL validation. Self-assessment caps at Proficient.</p>
         </article>
       </div>
     </section>
@@ -285,7 +285,7 @@
 
   <!-- ===================== right rail ===================== -->
   <aside class="rail">
-    <article class="rail-card rise">
+    <article class="rail-card">
       <h2>Profile completeness</h2>
       <div class="ring-row">
         <svg class="ring" viewBox="0 0 84 84" aria-label="Profile completeness" id="ringSvg">
@@ -295,52 +295,52 @@
           <text id="ringText" x="42" y="48" text-anchor="middle" font-size="19" font-weight="800" fill="#25341f">78%</text>
         </svg>
         <ul class="parts">
-          <li class="done">Part A — Core</li>
-          <li class="done">Part B — Self-assessment</li>
-          <li id="partCStatus">Part C — Depth · 2 of 4</li>
+          <li class="done">Part A · Core</li>
+          <li class="done">Part B · Self-assessment</li>
+          <li id="partCStatus">Part C · Depth · 2 of 4</li>
         </ul>
       </div>
       <p class="rail-note" id="partCNote">Completing Part C unlocks <strong>Project Expert</strong> validation.</p>
       <button type="button" class="btn-dark btn-wide" id="partCBtn">Complete Part C</button>
     </article>
 
-    <article class="rail-card rise">
+    <article class="rail-card">
       <h2>This week</h2>
       <ol class="week" id="weekStrip" aria-label="This week"></ol>
       <ol class="tline" id="tline">
         <li class="tl-strong">
           <span class="tl-time">Thu · 18:00</span>
-          <p class="tl-name">Mentorship session — Roberto</p>
+          <p class="tl-name">Mentorship session · Roberto</p>
           <p class="tl-sub">Participatory processes · video call</p>
         </li>
         <li>
           <span class="tl-time">Fri · 10:00</span>
-          <p class="tl-name">Course module — Urban data basics</p>
+          <p class="tl-name">Course module · Urban data basics</p>
           <p class="tl-sub">You're the mentee here · module 3 of 8</p>
         </li>
         <li>
           <span class="tl-time">Sat · 11:30</span>
-          <p class="tl-name">Knowledge circle — Lima chapter</p>
+          <p class="tl-name">Knowledge circle · Lima chapter</p>
           <p class="tl-sub">Local Connector · 12 confirmed</p>
         </li>
         <li class="tl-soft">
           <span class="tl-time">Pending</span>
-          <p class="tl-name">Endorsement request — facilitation</p>
+          <p class="tl-name">Endorsement request · facilitation</p>
           <p class="tl-sub">From Inés D. after the Callao audit</p>
         </li>
         <li class="tl-extra" hidden>
           <span class="tl-time">Last week</span>
-          <p class="tl-name">Resource shared — corridor survey kit</p>
+          <p class="tl-name">Resource shared · corridor survey kit</p>
           <p class="tl-sub">12 downloads · counts toward Knowledge Sharer</p>
         </li>
         <li class="tl-extra" hidden>
           <span class="tl-time">Last week</span>
-          <p class="tl-name">Introduction made — Sofía ↔ Inés</p>
+          <p class="tl-name">Introduction made · Sofía ↔ Inés</p>
           <p class="tl-sub">Connector badge · 3 of 5</p>
         </li>
         <li class="tl-extra tl-soft" hidden>
           <span class="tl-time">May 28</span>
-          <p class="tl-name">Mentorship session — Ana</p>
+          <p class="tl-name">Mentorship session · Ana</p>
           <p class="tl-sub">Feedback received · counts toward Instructor</p>
         </li>
       </ol>
@@ -354,7 +354,7 @@
   <form id="userForm" method="dialog" novalidate>
     <p class="pd-kicker">NODAL · Member preview</p>
     <h3>Who's exploring today?</h3>
-    <p class="partc-sub">Create a profile to see the dashboard as a brand-new member —
+    <p class="partc-sub">Create a profile to see the dashboard as a brand-new member,
       or jump in as a generated one.</p>
     <label>Your name
       <input type="text" id="ucName" maxlength="40" placeholder="Ana Pereira" />
@@ -367,7 +367,7 @@
         <select id="ucRole"></select>
       </label>
     </div>
-    <p class="uc-label">Topics of interest — pick up to 3</p>
+    <p class="uc-label">Topics of interest · pick up to 3</p>
     <div class="uc-topics" id="ucTopics"></div>
     <p class="pc-error" id="ucError" hidden></p>
     <div class="partc-actions">
@@ -380,11 +380,11 @@
 </dialog>
 
 <!-- ===================== Part C dialog ===================== -->
-<dialog class="partc" id="partCDialog" aria-label="Part C — profile depth">
+<dialog class="partc" id="partCDialog" aria-label="Part C · profile depth">
   <form id="partCForm" method="dialog" novalidate>
-    <p class="pd-kicker">Onboarding · Part C — Depth</p>
+    <p class="pd-kicker">Onboarding · Part C · Depth</p>
     <h3>Complete your profile</h3>
-    <p class="partc-sub">Optional at entry — required before Mentor and Project Expert validation.</p>
+    <p class="partc-sub">Optional at entry, required before Mentor and Project Expert validation.</p>
     <label>Short bio
       <textarea id="pcBio" rows="3" maxlength="400"></textarea>
     </label>
@@ -392,7 +392,7 @@
       <input type="url" id="pcPortfolio" placeholder="https://…" />
     </label>
     <label>Two reference contacts
-      <input type="text" id="pcRefs" maxlength="160" placeholder="Name — email · Name — email" />
+      <input type="text" id="pcRefs" maxlength="160" placeholder="Name + email · Name + email" />
     </label>
     <label>Availability for assignments
       <select id="pcAvail">
@@ -404,7 +404,7 @@
     </label>
     <label class="pc-consent">
       <input type="checkbox" id="pcConsent" />
-      <span>Show my profile in the member directory — nothing is public without consent.</span>
+      <span>Show my profile in the member directory. Nothing is public without consent.</span>
     </label>
     <p class="pc-error" id="pcError" hidden></p>
     <div class="partc-actions">
@@ -414,6 +414,6 @@
   </form>
 </dialog>
 
-<script src="dashboard.js?v=4"></script>
+<script src="dashboard.js?v=6"></script>
 </body>
 </html>

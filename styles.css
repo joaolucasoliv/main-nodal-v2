@@ -35,8 +35,8 @@
   --font-mono:    var(--font-display);  /* technical labels → Montserrat signage */
 
   /* radii */
-  --r-card:  10px;   /* content cards — squared, architectural    */
-  --r-btn:   10px;   /* buttons — squared, stamp-like             */
+  --r-card:  6px;    /* content cards — squared, architectural    */
+  --r-btn:   7px;    /* buttons — squared, stamp-like             */
   --r-pill:  999px;  /* tags & status chips only                  */
 
   --maxw: 1180px;
@@ -287,17 +287,6 @@ h1, h2, h3 {
 .section-title.light { color: #fff; }
 .section-lead { font-size: clamp(25px, 3.2vw, 42px); font-weight: 500; line-height: 1.2; letter-spacing: -.015em; max-width: 980px; color: var(--ink); }
 .section-lead .hl { color: var(--green-bright); font-style: italic; }
-
-/* reveal on scroll — each element settles with its own weight: distance,
-   duration and a hint of tilt are set per element in app.js, so the page
-   reads laid-by-hand rather than metronomic */
-.reveal {
-  opacity: 0;
-  transform: translateY(var(--rv-y, 26px)) rotate(var(--rv-r, 0deg));
-  transition: opacity var(--rv-d, .7s) ease,
-              transform var(--rv-d, .7s) cubic-bezier(.16,1,.3,1);
-}
-.reveal.in { opacity: 1; transform: none; }
 
 /* about */
 .about { background: var(--paper); }
@@ -571,6 +560,14 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible
 .plan-pro:hover { border-color: var(--green-deep); transform: translate(-3px,-3px);
   box-shadow: 6px 6px 0 rgba(89,188,83,.5); }
 
+/* hover grammar — boxed plates lift onto a hard shadow; quiet elements answer the cursor */
+.pay-plan, .match-card { transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s cubic-bezier(.16,1,.3,1), border-color .25s ease; }
+.pay-plan:hover, .match-card:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 rgba(61,92,56,.10); }
+.stat { transition: border-color .25s ease; }
+.stat:hover { border-top-color: var(--green-bright); }
+.step { transition: transform .3s cubic-bezier(.16,1,.3,1); }
+.step:hover { transform: translateY(-3px); }
+
 /* registration ticks — corner marks that brand boxed cards as atlas plates */
 .match-card, .pf-hero-card, .pf-panel { position: relative; }
 .plan::before, .pay-plan::before, .pay-summary::before,
@@ -637,7 +634,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; scroll-behavior: auto; }
-  .reveal, .headline > span, .hero-sub, .hero-cta, .hero-kicker { opacity: 1; transform: none; }
+  .headline > span, .hero-sub, .hero-cta, .hero-kicker { opacity: 1; transform: none; }
   .card-flat, .res-card, .stat, .plan, .match-card, .leader-card, .pf-card, .btn, .socials a { transition: none; }
 }
 
