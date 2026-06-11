@@ -6,20 +6,20 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta name="description" content="Preview of NODAL monthly membership billing — founding pricing, cancel anytime." />
+  <meta name="description" content="Preview of NODAL monthly membership billing: founding pricing, cancel anytime." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cline x1='20' y1='22' x2='44' y2='42' stroke='%2359bc53' stroke-width='5'/%3E%3Ccircle cx='20' cy='22' r='11' fill='%233d5c38'/%3E%3Ccircle cx='44' cy='42' r='8' fill='%2359bc53'/%3E%3C/svg%3E" />
-  <title>NODAL — Monthly membership</title>
+  <title>NODAL · Monthly membership</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body class="pay-page">
 
   <header class="navbar" id="top">
     <a class="brand" href="index.html">
       <img class="brand-wordmark" src="assets/nodal-wordmark.png"
-           alt="NODAL — Nodos Urbanos de América Latina" />
+           alt="NODAL · Nodos Urbanos de América Latina" />
     </a>
 
     <nav class="nav-main">
@@ -45,7 +45,7 @@
       <div class="wrap">
         <p class="eyebrow">Membership · Payments preview</p>
         <h1 class="pay-title">One membership.<br/><em>Billed monthly.</em></h1>
-        <p class="pay-sub">Monthly billing is coming to NODAL — a preview of how it will work,
+        <p class="pay-sub">Monthly billing is coming to NODAL. Here is a preview of how it will work,
           with founding pricing that may change at launch.</p>
         <span class="pay-flag">Coming soon</span>
       </div>
@@ -107,9 +107,10 @@
             <p>Pay with</p>
             <span>Card</span><span>Mercado Pago</span><span>Yape · Plin</span>
           </div>
-          <a class="btn btn-primary btn-block" href="mailto:hello@nodal.la?subject=NODAL%20membership%20launch%20notice">Notify me at launch</a>
-          <p class="pay-secure">Payments will be processed by a certified provider (PCI&nbsp;DSS).
-            NODAL never sees or stores your card details.</p>
+          <a class="btn btn-primary btn-block" href="mailto:fmuro@sistemaurbano.org,malegre@sistemaurbano.org?subject=NODAL%20membership%20launch%20notice">Notify me at launch</a>
+          <p class="pay-preview-note" id="payPreviewNote" hidden>Checkout preview — live payments open at launch. We'll email you the day they do.</p>
+          <p class="pay-secure">Payments will run through a certified provider such as Stripe (PCI&nbsp;DSS).
+            Your card details never touch NODAL's servers.</p>
         </aside>
       </div>
     </section>
@@ -125,17 +126,22 @@
         </details>
         <details>
           <summary>What currency will I be charged in?</summary>
-          <p>Prices are in US dollars — local methods (Mercado Pago, Yape, Plin) charge the
+          <p>Prices are in US dollars. Local methods (Mercado Pago, Yape, Plin) charge the
             equivalent at checkout.</p>
         </details>
         <details>
           <summary>Will I get a receipt?</summary>
-          <p>Every charge comes with an emailed receipt — organisation invoices on request.</p>
+          <p>Every charge comes with an emailed receipt, and organisation invoices on request.</p>
         </details>
         <details>
           <summary>Is this pricing final?</summary>
-          <p>No — this is founding-member preview pricing. Whatever you see at launch is what
+          <p>No. This is founding-member preview pricing. Whatever you see at launch is what
             early members keep.</p>
+        </details>
+        <details>
+          <summary>How will payments be processed?</summary>
+          <p>Through a certified checkout provider (Stripe-ready today). You pay on their secure
+            page and come straight back; NODAL never sees or stores card numbers.</p>
         </details>
       </div>
     </section>
@@ -146,7 +152,7 @@
       <div class="wrap">
         <h2>Get in touch</h2>
         <p class="footer-rights">2026 All Rights Reserved</p>
-        <a class="footer-email" href="mailto:hello@nodal.la">Email: hello@nodal.la</a>
+        <a class="footer-email" href="mailto:fmuro@sistemaurbano.org,malegre@sistemaurbano.org">Email: fmuro@sistemaurbano.org, malegre@sistemaurbano.org</a>
         <a class="footer-old" href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Previous website: sistemaurbano.org/nodal ↗</a>
       </div>
     </div>

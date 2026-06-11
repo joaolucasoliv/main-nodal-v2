@@ -1,4 +1,7 @@
-/* payments preview: billing cycle toggle + order summary */
+/* payments: billing cycle toggle + order summary + provider seam.
+   Providers are tried in order; 'stripe' activates only when the server
+   has STRIPE_SECRET_KEY configured, otherwise 'preview' keeps today's
+   behavior — including on plain static hosting where fetch fails. */
 (() => {
   const PRICING = {
     monthly: { label: 'Monthly', amount: 'US$10',  per: '/ month',
@@ -22,7 +25,10 @@
   // bail out cleanly if the page structure changes — never throw on load
   if (Object.values(els).some((el) => !el)) return;
 
+  let currentCycle = 'monthly';
+
   function setCycle(key) {
+    currentCycle = key;
     const p = PRICING[key];
     els.amount.textContent = p.amount;
     els.per.textContent = p.per;
@@ -41,12 +47,45 @@
   els.monthly.addEventListener('click', () => setCycle('monthly'));
   els.annual.addEventListener('click', () => setCycle('annual'));
 
-  // bring the summary into view so the selection is visible on mobile
+  /* payment providers, tried in order; 'preview' always succeeds */
+  const PROVIDERS = [
+    {
+      id: 'stripe',
+      async checkout({ plan, cycle }) {
+        let res;
+        try {
+          res = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan, cycle }),
+          });
+        } catch { return { status: 'unavailable' }; }       // static hosting
+        if (!res.ok) return { status: 'unavailable' };       // 501 = not configured
+        const data = await res.json().catch(() => null);
+        if (!data || typeof data.url !== 'string') return { status: 'unavailable' };
+        let host;
+        try { host = new URL(data.url).hostname; } catch { return { status: 'unavailable' }; }
+        if (host !== 'checkout.stripe.com') return { status: 'unavailable' };
+        return { status: 'redirect', url: data.url };
+      },
+    },
+    { id: 'preview', async checkout() { return { status: 'preview' }; } },
+  ];
+
   const selectPro = document.getElementById('selectPro');
   const summary = document.querySelector('.pay-summary');
-  if (selectPro && summary) {
-    selectPro.addEventListener('click', () => {
-      summary.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
+  const payNote = document.getElementById('payPreviewNote');
+
+  async function startCheckout() {
+    selectPro.disabled = true;
+    for (const provider of PROVIDERS) {
+      const result = await provider.checkout({ plan: 'membership', cycle: currentCycle });
+      if (result.status === 'redirect') { location.assign(result.url); return; }
+      if (result.status === 'preview') break;
+    }
+    selectPro.disabled = false;
+    if (payNote) payNote.hidden = false;
+    summary?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+  selectPro?.addEventListener('click', () => { startCheckout(); });
 })();
