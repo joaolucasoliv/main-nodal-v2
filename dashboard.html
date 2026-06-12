@@ -97,7 +97,7 @@
           <p id="greetSub">Your node is active in <strong>3 spaces</strong> this week: 2 new matches,
             one mentorship session today, and your Ambassador path is 4 of 6 months in.</p>
         </div>
-        <p class="greet-note"><span id="userPlace">12.04°S · 77.04°W · Lima</span><br/><span>Member node · preview</span></p>
+        <p class="greet-note"><span id="userPlace">12.04°S · 77.04°W · Lima</span><br/><span>Member node · preview</span><br/><a id="userLinkedIn" class="li-chip" target="_blank" rel="noopener noreferrer" hidden></a></p>
       </div>
 
       <div class="ov-grid">
@@ -297,7 +297,7 @@
         <ul class="parts">
           <li class="done">Part A · Core</li>
           <li class="done">Part B · Self-assessment</li>
-          <li id="partCStatus">Part C · Depth · 2 of 4</li>
+          <li id="partCStatus">Part C · Depth · 3 of 5</li>
         </ul>
       </div>
       <p class="rail-note" id="partCNote">Completing Part C unlocks <strong>Project Expert</strong> validation.</p>
@@ -388,7 +388,10 @@
     <label>Short bio
       <textarea id="pcBio" rows="3" maxlength="400"></textarea>
     </label>
-    <label>Portfolio or LinkedIn
+    <label>LinkedIn profile
+      <input type="url" id="pcLinkedin" placeholder="https://www.linkedin.com/in/you" />
+    </label>
+    <label>Portfolio or website
       <input type="url" id="pcPortfolio" placeholder="https://…" />
     </label>
     <label>Two reference contacts
