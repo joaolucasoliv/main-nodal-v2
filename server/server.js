@@ -183,7 +183,8 @@ export function createApp({ store = createStore(), cache = new MemoryCache(), pa
           return;
         }
         if (!payments.config) { send(res, 501, { error: 'payments not configured', preview: true }); return; }
-        const origin = `http://${req.headers.host ?? 'localhost'}`;
+        // PUBLIC_BASE_URL pins the Stripe return URLs in production (Host header is client-supplied)
+        const origin = process.env.PUBLIC_BASE_URL ?? `http://${req.headers.host ?? 'localhost'}`;
         const session = await createCheckoutSession({ cycle: body.cycle, origin }, payments.config, payments.fetchImpl);
         send(res, 200, session);
         return;
