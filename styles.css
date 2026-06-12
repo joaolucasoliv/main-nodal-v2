@@ -355,7 +355,8 @@ h1, h2, h3 {
 #graph { width: 100%; height: auto; display: block; }
 .graph-hint { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .14em; font-weight: 600;
   font-size: 11px; color: var(--concrete); margin-top: 14px; text-align: right; }
-.gnode { cursor: pointer; outline: none; transition: opacity .25s ease; }
+.gnode { cursor: grab; outline: none; transition: opacity .25s ease; touch-action: none; }
+.gnode.is-drag { cursor: grabbing; }
 .gnode circle { transform-box: fill-box; transform-origin: center; }
 .gnode.is-dim { opacity: .25; }
 .gnode:focus-visible circle:first-of-type { stroke: var(--green-bright); stroke-width: 3; }
