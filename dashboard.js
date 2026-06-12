@@ -132,13 +132,14 @@
           : 'Your node is live. Four minutes of self-assessment opens your growth paths — then the network starts working for you.';
     }
     const liChip = document.getElementById('userLinkedIn');
-    if (liChip) {
+    const liText = document.getElementById('userLinkedInText');
+    if (liChip && liText) {
       const url = U.partC?.linkedin ?? '';
       liChip.hidden = url === '';
       if (url) {
         liChip.href = url;
         const m = url.match(/linkedin\.com\/((?:in|company)\/[A-Za-z0-9_-]+)/);
-        liChip.textContent = m ? m[1] : 'LinkedIn';
+        liText.textContent = m ? m[1] : 'LinkedIn';
       }
     }
   }
@@ -773,8 +774,24 @@
       uc.topics.appendChild(label);
     });
 
+    const ucTitle = document.getElementById('ucTitle');
+    const ucSub = document.getElementById('ucSub');
+    const ucSubmit = document.getElementById('ucSubmit');
     const openUserDialog = () => {
       uc.error.hidden = true;
+      // members edit in place; the demo and first visits go through the create flow
+      const editing = U.kind === 'member';
+      if (ucTitle) ucTitle.textContent = editing ? 'Edit your profile' : 'Who’s exploring today?';
+      if (ucSub) {
+        ucSub.textContent = editing
+          ? 'Update your identity. Your self-assessment, badges and progress stay with you.'
+          : 'Create a profile to see the dashboard as a brand-new member, or jump in as a generated one.';
+      }
+      if (ucSubmit) ucSubmit.textContent = editing ? 'Save changes' : 'Create profile';
+      uc.name.value = editing ? U.name : '';
+      if (editing) { uc.city.value = U.city; uc.role.value = U.role; }
+      const current = new Set(editing ? U.topics.map((t) => t.name) : []);
+      uc.topics.querySelectorAll('input').forEach((i) => { i.checked = current.has(i.value); });
       if (typeof userDialog.showModal === 'function' && !userDialog.open) userDialog.showModal();
     };
     document.getElementById('userBtn')?.addEventListener('click', openUserDialog);
@@ -788,7 +805,17 @@
         uc.error.hidden = false;
         return;
       }
-      setUser(newUser(name, uc.city.value, uc.role.value, topics));
+      if (U.kind === 'member') {
+        // edit in place — keep levels and validation for topics that stay
+        U.name = name;
+        U.city = uc.city.value;
+        U.role = uc.role.value;
+        const byName = new Map(U.topics.map((t) => [t.name, t]));
+        U.topics = topics.map((n) => byName.get(n) ?? { name: n, level: 1, validatedAt: 0, endorsedAt: 0 });
+        setUser(U);
+      } else {
+        setUser(newUser(name, uc.city.value, uc.role.value, topics));
+      }
     });
     document.getElementById('ucRandom')?.addEventListener('click', () => {
       setUser(randomUser());

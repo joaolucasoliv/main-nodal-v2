@@ -226,10 +226,12 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   line-height: 1.8;
 }
 .greet-note span { color: var(--green); }
-.li-chip { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700;
+.li-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: 11px; font-weight: 700;
   letter-spacing: .06em; text-transform: none; color: var(--green-dark);
   border: 1px solid var(--hairline); border-radius: var(--r-pill); padding: 4px 11px;
   transition: border-color .2s ease, background-color .2s ease; }
+.li-chip svg { width: 12px; height: 12px; fill: currentColor; flex-shrink: 0; }
 .li-chip:hover { border-color: var(--green); background: rgba(173, 222, 168, .25); }
 
 /* ================= blocks & cards ================= */
