@@ -838,6 +838,12 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible
 .pf-id h1 { font-size: clamp(32px, 4vw, 48px); color: var(--ink); line-height: 1.05; }
 .pf-role { color: var(--muted); font-weight: 600; margin: 8px 0 14px; }
 .pf-meta { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+.pf-linkedin { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+  font-size: 13px; font-weight: 700; color: var(--green-deep);
+  border: 1px solid var(--hairline); border-radius: var(--r-pill); padding: 6px 13px;
+  transition: border-color .2s ease, background-color .2s ease; }
+.pf-linkedin:hover { border-color: var(--green-bright); background: var(--green-soft); }
+.pf-linkedin svg { width: 14px; height: 14px; fill: currentColor; }
 .pf-quote { margin-top: 18px; font-family: var(--font-display); font-style: italic; font-weight: 600;
   font-size: 17px; line-height: 1.5; color: var(--green-deep);
   border-left: 3px solid var(--green-bright); padding-left: 16px; }
