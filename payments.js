@@ -58,8 +58,9 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ plan, cycle }),
+            signal: AbortSignal.timeout(8000),   // a hung request must not strand the button
           });
-        } catch { return { status: 'unavailable' }; }       // static hosting
+        } catch { return { status: 'unavailable' }; }       // static hosting / timeout
         if (!res.ok) return { status: 'unavailable' };       // 501 = not configured
         const data = await res.json().catch(() => null);
         if (!data || typeof data.url !== 'string') return { status: 'unavailable' };
@@ -75,6 +76,15 @@
   const selectPro = document.getElementById('selectPro');
   const summary = document.querySelector('.pay-summary');
   const payNote = document.getElementById('payPreviewNote');
+
+  // returning from a hosted checkout (?checkout=success|cancelled)
+  const backFrom = new URLSearchParams(location.search).get('checkout');
+  if (payNote && (backFrom === 'success' || backFrom === 'cancelled')) {
+    payNote.textContent = backFrom === 'success'
+      ? 'Payment confirmed — welcome aboard. Your receipt is on its way by email.'
+      : 'Checkout cancelled — nothing was charged.';
+    payNote.hidden = false;
+  }
 
   async function startCheckout() {
     selectPro.disabled = true;

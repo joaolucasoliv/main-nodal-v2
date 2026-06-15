@@ -59,8 +59,10 @@
     ['business', 'community'], ['business', 'mobility'], ['business', 'economist'],
   ];
   const idx = new Map(N.map((n, i) => [n.id, i]));
+  const EIDX = E.map(([a, b]) => [idx.get(a), idx.get(b)]);   // edges as node indices
+  const HUB_EDGE = E.map(([a, b]) => a === 'project' || b === 'project');
   const adj = N.map(() => new Set());
-  E.forEach(([a, b]) => { adj[idx.get(a)].add(idx.get(b)); adj[idx.get(b)].add(idx.get(a)); });
+  EIDX.forEach(([a, b]) => { adj[a].add(b); adj[b].add(a); });
 
   const pool = document.querySelector('.gc-pool');
   const svg = document.getElementById('graph');
@@ -101,6 +103,7 @@
     t.setAttribute('class', 'glabel');
     t.setAttribute('data-i18n', `graph.n.${n.id}.t`);
     t.textContent = labelOf(n.id);
+    // no aria-label: role=button names itself from the (i18n-translated) text child
     g.append(ring, c, t);
     svg.appendChild(g);
     return { g, c, ring, t };
@@ -108,7 +111,7 @@
 
   function renderFrame() {
     edgeEls.forEach((l, k) => {
-      const A = N[idx.get(E[k][0])], B = N[idx.get(E[k][1])];
+      const A = N[EIDX[k][0]], B = N[EIDX[k][1]];
       l.setAttribute('x1', A.x.toFixed(1)); l.setAttribute('y1', A.y.toFixed(1));
       l.setAttribute('x2', B.x.toFixed(1)); l.setAttribute('y2', B.y.toFixed(1));
     });
@@ -118,6 +121,7 @@
       el.ring.setAttribute('cx', n.x.toFixed(1)); el.ring.setAttribute('cy', n.y.toFixed(1));
       el.t.setAttribute('x', n.x.toFixed(1)); el.t.setAttribute('y', (n.y + n.r + 18).toFixed(1));
     });
+    if (selected !== null && !card.hidden) anchorCard(selected);   // card follows its node
   }
 
   /* ---------- force simulation ---------- */
@@ -142,8 +146,7 @@
         fx[j] -= (dx / d) * f; fy[j] -= (dy / d) * f;
       }
     }
-    edgeEls.forEach((_, k) => {
-      const a = idx.get(E[k][0]), b = idx.get(E[k][1]);
+    EIDX.forEach(([a, b]) => {
       const dx = N[b].x - N[a].x, dy = N[b].y - N[a].y;
       const d = Math.max(Math.hypot(dx, dy), 1);
       const f = SIM.spring * (d - SIM.rest);
@@ -176,17 +179,15 @@
   }
 
   /* ---------- drag (pointer events; click = press without travel) ---------- */
-  const toSvg = (e) => {
-    const r = svg.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * (900 / r.width), y: (e.clientY - r.top) * (520 / r.height) };
-  };
   nodeEls.forEach((el, i) => {
     el.g.addEventListener('pointerdown', (e) => {
+      if (dragging) return;   // one drag at a time — a second finger must not steal the slot
       e.preventDefault();
-      dragging = { i, moved: 0, px: e.clientX, py: e.clientY };
+      // rect cached for the drag's lifetime: no layout read per move
+      dragging = { i, moved: 0, px: e.clientX, py: e.clientY, rect: svg.getBoundingClientRect() };
       N[i].fixed = true;
       el.g.classList.add('is-drag');
-      el.g.setPointerCapture(e.pointerId);
+      try { el.g.setPointerCapture(e.pointerId); } catch { /* pointer already inactive (Safari) */ }
       highlight(i);
       wake();
     });
@@ -194,9 +195,9 @@
       if (!dragging || dragging.i !== i) return;
       dragging.moved += Math.hypot(e.clientX - dragging.px, e.clientY - dragging.py);
       dragging.px = e.clientX; dragging.py = e.clientY;
-      const p = toSvg(e);
-      N[i].x = Math.max(SIM.minX, Math.min(SIM.maxX, p.x));
-      N[i].y = Math.max(SIM.minY, Math.min(SIM.maxY, p.y));
+      const r = dragging.rect;
+      N[i].x = Math.max(SIM.minX, Math.min(SIM.maxX, (e.clientX - r.left) * (900 / r.width)));
+      N[i].y = Math.max(SIM.minY, Math.min(SIM.maxY, (e.clientY - r.top) * (520 / r.height)));
       if (reduced) renderFrame(); else wake();
     });
     const release = (e) => {
@@ -222,10 +223,21 @@
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
     });
   });
+  // safety net: if pointer capture failed (Safari) and the release landed off
+  // the node, never leave a node frozen with a stuck drag
+  document.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    const stuck = dragging;
+    dragging = null;
+    N[stuck.i].fixed = false;
+    nodeEls[stuck.i].g.classList.remove('is-drag');
+    if (selected === null) reset(); else highlight(selected);
+    wake();
+  });
 
   function highlight(i) {
     edgeEls.forEach((l, k) => {
-      const on = idx.get(E[k][0]) === i || idx.get(E[k][1]) === i;
+      const on = EIDX[k][0] === i || EIDX[k][1] === i;
       l.setAttribute('stroke', on ? COL.edgeOn : COL.edgeDim);
       l.setAttribute('stroke-width', on ? '2.5' : '1');
     });
@@ -236,8 +248,7 @@
   }
   function reset() {
     edgeEls.forEach((l, k) => {
-      const hubEdge = E[k][0] === 'project' || E[k][1] === 'project';
-      l.setAttribute('stroke', hubEdge ? COL.hubEdge : COL.edge);
+      l.setAttribute('stroke', HUB_EDGE[k] ? COL.hubEdge : COL.edge);
       l.setAttribute('stroke-width', '1.5');
     });
     nodeEls.forEach((el, k) => { el.g.classList.remove('is-dim'); el.c.setAttribute('r', N[k].r); });
@@ -330,8 +341,12 @@
     panes.forEach((p, k) => { p.hidden = k !== cardTab; });
     tabsRow.append(...btns);
     card.append(head, pathP, tabsRow, ...panes);
+    anchorCard(i);
+  }
 
-    // anchor near the node's CURRENT position, clamped (≤820px CSS makes it a sheet)
+  // anchor near the node's CURRENT position, clamped (≤820px CSS makes it a sheet)
+  function anchorCard(i) {
+    const n = N[i];
     const px = Math.min(Math.max((n.x / 900) * 100, 6), 62);
     const py = Math.min(Math.max((n.y / 520) * 100, 5), 48);
     card.style.setProperty('--gc-x', `${px.toFixed(1)}%`);
@@ -354,6 +369,11 @@
   }
   svg.addEventListener('click', (e) => { if (e.target === svg) deselect(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !card.hidden) deselect(); });
+  // language switch: i18n.js sets <html lang> then retranslates the pool —
+  // rebuild an open card so it follows the new language
+  new MutationObserver(() => {
+    if (selected !== null && !card.hidden) buildCard(selected);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 
   /* ---------- intro: draw in, then let the simulation settle ---------- */
   renderFrame();
@@ -377,7 +397,8 @@
     setTimeout(() => {
       // dasharray would clip edges as they stretch during the sim — clear it
       edgeEls.forEach((l) => { l.style.transition = ''; l.style.strokeDasharray = ''; l.style.strokeDashoffset = ''; });
-      reset();
+      // an early click may already hold a selection — don't clobber it
+      if (selected === null) reset(); else highlight(selected);
       wake();
     }, 320 + edgeEls.length * 45 + 1000);
   } else {

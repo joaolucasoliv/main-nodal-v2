@@ -62,12 +62,15 @@ export function createStore(seed = seedData()) {
 
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
+const MAX_EVENTS_PER_PAIR = 50;   // older events are ~fully decayed anyway
+
 export function recordInteraction(store, from, to, type, at = Date.now()) {
   const w = ENGAGEMENT_WEIGHT[type];
   if (w === undefined) throw new Error(`unknown interaction type: ${type}`);
   const k = pairKey(from, to);
   const events = store.engagement.get(k) ?? [];
   events.push({ w, at });
+  if (events.length > MAX_EVENTS_PER_PAIR) events.splice(0, events.length - MAX_EVENTS_PER_PAIR);
   store.engagement.set(k, events);
 }
 

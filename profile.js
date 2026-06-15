@@ -57,8 +57,10 @@
 
   const li = $('pfLinkedin');
   const liUrl = (user.partC?.linkedin ?? '').trim();
+  // re-validate on read: storage is user-editable, the href must stay a real LinkedIn URL
+  const LI_OK = /^https:\/\/(www\.)?linkedin\.com\/(in|company)\/[A-Za-z0-9_-]+/;
   if (li) {
-    if (liUrl) {
+    if (liUrl && LI_OK.test(liUrl)) {
       li.href = liUrl;
       set('pfLinkedinText', liUrl.replace(/^https:\/\/(www\.)?/, ''));
     } else {

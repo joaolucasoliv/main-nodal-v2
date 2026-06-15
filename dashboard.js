@@ -12,8 +12,14 @@
     try {
       const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
       const user = raw.user ?? null;
-      // saved before the LinkedIn field existed — normalize
-      if (user && user.partC && user.partC.linkedin === undefined) user.partC.linkedin = '';
+      // normalize older or malformed saved states: partC must exist and carry every field
+      if (user) {
+        if (!user.partC || typeof user.partC !== 'object') {
+          user.partC = { bio: '', linkedin: '', portfolio: '', references: '', availability: '', consent: false };
+        } else if (user.partC.linkedin === undefined) {
+          user.partC.linkedin = '';
+        }
+      }
       return { user, notifRead: Boolean(raw.notifRead) };
     } catch { return { user: null, notifRead: false }; }
   }
@@ -38,6 +44,7 @@
   const RANDOM_NAMES = ['Joaquín P.', 'Beatriz L.', 'Antônia R.', 'Marco T.', 'Luana S.', 'Felipe G.', 'Ximena V.', 'Caio M.', 'Renata F.', 'Pedro H.'];
 
   const blankPartC = () => ({ bio: '', linkedin: '', portfolio: '', references: '', availability: '', consent: false });
+  const makeTopic = (name, level = 1) => ({ name, level, validatedAt: 0, endorsedAt: 0 });
 
   function demoUser() {
     return {
@@ -71,7 +78,7 @@
       kind: 'member',
       name, role, city,
       assessed: false,
-      topics: topicNames.map((n) => ({ name: n, level: 1, validatedAt: 0, endorsedAt: 0 })),
+      topics: topicNames.map((n) => makeTopic(n)),
       skills: [],
       indicators: { leadership: 'No', transmission: 'No' },
       partC: blankPartC(),
@@ -82,7 +89,7 @@
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   function randomUser() {
     const topics = [...TAXONOMY].sort(() => Math.random() - 0.5).slice(0, 3)
-      .map((n) => ({ name: n, level: 1 + Math.floor(Math.random() * 3), validatedAt: 0, endorsedAt: 0 }));
+      .map((n) => makeTopic(n, 1 + Math.floor(Math.random() * 3)));
     const u = newUser(pick(RANDOM_NAMES), pick(CITIES), pick(ROLES_LIST), []);
     u.topics = topics;
     u.assessed = true;
@@ -402,12 +409,14 @@
     }));
     pd.cta.disabled = false;
     pd.cta.classList.remove('is-sent');
-    if (key === 'project' && !partCDone()) {
-      pd.cta.textContent = 'Complete Part C first';
-    } else if (U.requests[key]) {
+    if (U.requests[key]) {
+      // an already-submitted request stays acknowledged, even if Part C later
+      // gains new fields and drops below "complete"
       pd.cta.textContent = b.requested ?? 'Done ✓';
       pd.cta.classList.add('is-sent');
       pd.cta.disabled = true;
+    } else if (key === 'project' && !partCDone()) {
+      pd.cta.textContent = 'Complete Part C first';
     } else {
       pd.cta.textContent = b.cta;
     }
@@ -811,7 +820,7 @@
         U.city = uc.city.value;
         U.role = uc.role.value;
         const byName = new Map(U.topics.map((t) => [t.name, t]));
-        U.topics = topics.map((n) => byName.get(n) ?? { name: n, level: 1, validatedAt: 0, endorsedAt: 0 });
+        U.topics = topics.map((n) => byName.get(n) ?? makeTopic(n));
         setUser(U);
       } else {
         setUser(newUser(name, uc.city.value, uc.role.value, topics));

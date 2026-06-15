@@ -470,11 +470,12 @@
   const DICT = { en: EN, es: ES, pt: PT };
 
   function apply(lang) {
-    capture();
     const d = DICT[lang] || EN;
     document.documentElement.lang = lang;
     allNodes().forEach((el) => {
-      const value = d[el.dataset.i18n];
+      const k = el.dataset.i18n;
+      if (!(k in EN)) EN[k] = el.textContent;   // lazy EN capture (SVG labels arrive after load)
+      const value = d[k];
       if (value !== undefined) el.textContent = value;
     });
     document.querySelectorAll('.lang-btn').forEach((btn) => {
