@@ -793,7 +793,7 @@
       if (ucTitle) ucTitle.textContent = editing ? 'Edit your profile' : 'Who’s exploring today?';
       if (ucSub) {
         ucSub.textContent = editing
-          ? 'Update your identity. Your self-assessment, badges and progress stay with you.'
+          ? 'Update your identity! Your profile is the heart of your dashboard experience, so keep it fresh as you grow.'
           : 'Create a profile to see the dashboard as a brand-new member, or jump in as a generated one.';
       }
       if (ucSubmit) ucSubmit.textContent = editing ? 'Save changes' : 'Create profile';
