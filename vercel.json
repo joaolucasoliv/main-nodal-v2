@@ -6,7 +6,6 @@
   "devCommand": "npm start",
   "functions": {
     "api/index.js": {
-      "runtime": "nodejs22.x",
       "includeFiles": "{server/**,*.html,*.css,*.js}"
     }
   },
