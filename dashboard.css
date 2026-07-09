@@ -573,6 +573,8 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   transition: border-color .15s ease, color .15s ease;
 }
 .pc-cancel:hover { border-color: var(--green-dark); color: var(--ink); }
+.pc-cancel.danger { color: #8f2f25; }
+.pc-cancel.danger:hover { border-color: #a23b2e; color: #7a241c; }
 
 /* user dialog extras */
 .top-avatar { border: 0; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
@@ -589,6 +591,14 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .uc-topics label:hover { border-color: var(--green); color: var(--green-dark); }
 .uc-topics input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .uc-topics label:has(input:checked) { background: var(--green-dark); border-color: var(--green-dark); color: #fff; }
+.uc-data-controls {
+  border-top: 1px solid var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.uc-data-controls[hidden] { display: none; }
 .uc-reset {
   border: 0; background: none; cursor: pointer;
   font-size: 11px; font-weight: 600; color: var(--muted);

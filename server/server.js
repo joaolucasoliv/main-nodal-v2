@@ -1,20 +1,56 @@
-/* NODAL server: static site + recommendation API.
-   Zero dependencies — run with `node server/server.js` (PORT, REDIS_URL optional). */
+/* NODAL server: static site + authenticated API.
+   Zero dependencies — run with `node server/server.js` (PORT, DATABASE_PATH, REDIS_URL optional). */
 
 import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createStore, addFollow, recordInteraction } from './store.js';
+import { addFollow, recordInteraction } from './store.js';
 import { recommend } from './engine.js';
 import { createCache, MemoryCache } from './cache.js';
-import { paymentsConfig, createCheckoutSession, CYCLES } from './payments.js';
+import {
+  paymentsConfig, createCheckoutSession, verifyStripeWebhook, CYCLES,
+} from './payments.js';
+import { validateEmail, validatePassword } from './auth.js';
+import { createRepository } from './repository.js';
+import { dataBackend, resolveSupabaseEnv } from './supabase.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+const envInt = (name, fallback) => {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+};
 const REC_TTL_MS = 5 * 60 * 1000;                 // 5-minute cache, per spec
 const ID_RE = /^[a-z0-9-]{1,40}$/;
-const INTERACTION_TYPES = new Set(['view', 'like', 'skip', 'message']);
-const MAX_BODY = 10 * 1024;
+const API_INTERACTION_TYPES = new Set(['skip']);
+const MAX_BODY = 32 * 1024;
+const PRIVATE_PAGES = new Set(['/dashboard.html', '/profile.html', '/payments.html']);
+const STATIC_BLOCKED_ROOTS = new Set(['server', 'api', 'docs', 'security', 'supabase', 'data', 'node_modules']);
+const STATIC_BLOCKED_FILES = new Set(['package.json', 'package-lock.json', 'README.md', 'DEPLOYMENT.md', 'vercel.json', 'AGENTS.md']);
+const AUTH_RATE_WINDOW_MS = 5 * 60 * 1000;
+const AUTH_RATE_LIMIT = envInt('AUTH_RATE_LIMIT', 10);
+const INTERACTION_RATE_WINDOW_MS = 60 * 1000;
+const INTERACTION_RATE_LIMIT = envInt('INTERACTION_RATE_LIMIT', 60);
+const CITY_SEARCH_MIN_QUERY = 2;
+const CITY_SEARCH_MAX_QUERY = 80;
+const CITY_SEARCH_LIMIT = envInt('CITY_SEARCH_LIMIT', 8);
+const CITY_SEARCH_CACHE_MS = 24 * 60 * 60 * 1000;
+const CITY_SEARCH_MIN_INTERVAL_MS = envInt('CITY_SEARCH_MIN_INTERVAL_MS', 1000);
+const CITY_SEARCH_BASE_URL = process.env.CITY_SEARCH_URL || 'https://geodb-free-service.wirefreethought.com/v1/geo/cities';
+const CITY_SEARCH_ATTRIBUTION = 'GeoDB Cities';
+const CITY_ADDRESS_KEYS = ['city', 'town', 'village', 'municipality', 'hamlet', 'county', 'city_district'];
+const BASE_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+];
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -29,20 +65,275 @@ const MIME = {
   '.woff2': 'font/woff2',
 };
 
-const recKey = (id) => `rec:v1:${id}`;
+function securityHeaders(headers = {}) {
+  const h = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Origin-Agent-Cluster': '?1',
+    ...headers,
+  };
+  if (process.env.NODE_ENV === 'production') {
+    h['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+  }
+  return h;
+}
+
+function contentSecurityPolicy(env = process.env) {
+  const directives = [...BASE_CSP];
+  if (env.NODE_ENV === 'production') directives.push('upgrade-insecure-requests');
+  return directives.join('; ');
+}
+
+function htmlSecurityHeaders(headers = {}) {
+  return securityHeaders({ 'Content-Security-Policy': contentSecurityPolicy(), ...headers });
+}
+
+function safeNext(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/dashboard.html';
+  if (value.includes('\\') || /[\u0000-\u001f\u007f]/.test(value)) return '/dashboard.html';
+  try {
+    const parsed = new URL(value, 'https://nodal.local');
+    if (parsed.origin !== 'https://nodal.local') return '/dashboard.html';
+    const normalized = path.posix.normalize(parsed.pathname);
+    if (!normalized.startsWith('/') || normalized.startsWith('//')) return '/dashboard.html';
+    return `${normalized}${parsed.search}${parsed.hash}`;
+  } catch {
+    return '/dashboard.html';
+  }
+}
+
+function canonicalPathname(pathname) {
+  try {
+    const decoded = decodeURIComponent(pathname);
+    if (decoded.includes('\0')) return null;
+    const normalized = path.posix.normalize(decoded);
+    return normalized.startsWith('/') ? normalized : `/${normalized}`;
+  } catch {
+    return null;
+  }
+}
+
+function createWindowRateLimiter({ windowMs, limit }) {
+  const buckets = new Map();
+  return {
+    take(key, now = Date.now()) {
+      const bucket = buckets.get(key);
+      if (!bucket || now >= bucket.resetAt) {
+        buckets.set(key, { count: 1, resetAt: now + windowMs });
+        return { ok: true, retryAfter: 0 };
+      }
+      if (bucket.count >= limit) {
+        return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+      }
+      bucket.count += 1;
+      return { ok: true, retryAfter: 0 };
+    },
+  };
+}
+
+function clientIp(req) {
+  if (process.env.TRUST_PROXY === 'true') {
+    const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+    if (forwarded) return forwarded.slice(0, 80);
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+function publicBaseUrl(env = process.env) {
+  const configured = env.PUBLIC_BASE_URL || env.NEXT_PUBLIC_APP_URL;
+  if (!configured) {
+    throw Object.assign(new Error('public base URL is required when payments are configured'), { status: 500 });
+  }
+  try {
+    const url = new URL(configured);
+    const loopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+    if (!url.hostname || (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback))) {
+      throw new Error('invalid base URL');
+    }
+    return url.origin;
+  } catch {
+    throw Object.assign(new Error('public base URL is invalid'), { status: 500 });
+  }
+}
+
+function readRequiredEnv(env, key, { productionRequired = false } = {}) {
+  const value = String(env[key] ?? '').trim();
+  if (!value && productionRequired) throw new Error(`${key} is required in production`);
+  return value;
+}
+
+export function publicBillingConfig(env = process.env) {
+  const productionRequired = env.NODE_ENV === 'production';
+  const monthlyAmount = readRequiredEnv(env, 'SUBSCRIPTION_PRICE_MONTHLY_LABEL', { productionRequired });
+  const annualAmount = readRequiredEnv(env, 'SUBSCRIPTION_PRICE_ANNUAL_LABEL', { productionRequired });
+  return {
+    cycles: {
+      monthly: {
+        label: env.SUBSCRIPTION_MONTHLY_LABEL || 'Monthly',
+        amount: monthlyAmount || 'Configured at checkout',
+        per: env.SUBSCRIPTION_MONTHLY_PERIOD || '',
+        note: env.SUBSCRIPTION_MONTHLY_NOTE || 'Cancel anytime.',
+        renews: env.SUBSCRIPTION_MONTHLY_RENEWS || 'Every month, until you cancel',
+        badge: env.SUBSCRIPTION_MONTHLY_BADGE || '',
+      },
+      annual: {
+        label: env.SUBSCRIPTION_ANNUAL_LABEL || 'Annual',
+        amount: annualAmount || 'Configured at checkout',
+        per: env.SUBSCRIPTION_ANNUAL_PERIOD || '',
+        note: env.SUBSCRIPTION_ANNUAL_NOTE || '',
+        renews: env.SUBSCRIPTION_ANNUAL_RENEWS || 'Every 12 months, until you cancel',
+        badge: env.SUBSCRIPTION_ANNUAL_BADGE || '',
+      },
+    },
+  };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const safeErrorMessage = (err) => (err instanceof Error ? err.message : String(err || 'unknown error'));
+
+function cleanCityQuery(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, CITY_SEARCH_MAX_QUERY);
+}
+
+function cityNameFromAddress(address = {}, fallback = '') {
+  for (const key of CITY_ADDRESS_KEYS) {
+    const value = String(address[key] || '').trim();
+    if (value) return value;
+  }
+  return String(fallback || '').trim();
+}
+
+function cityResultFromPlace(place) {
+  if (place?.city || (place?.name && place?.countryCode)) {
+    const name = String(place.city || place.name || '').trim();
+    if (!name) return null;
+    const region = String(place.region || '').trim();
+    const country = String(place.country || '').trim();
+    const label = [...new Set([name, region, country].filter(Boolean))].join(', ');
+    return {
+      name,
+      label: label || name,
+      region,
+      country,
+      countryCode: String(place.countryCode || '').toUpperCase(),
+      lat: Number(place.latitude) || null,
+      lon: Number(place.longitude) || null,
+      source: 'geodb',
+    };
+  }
+
+  const address = place?.address || {};
+  const name = cityNameFromAddress(address, place?.name);
+  if (!name) return null;
+  const region = String(address.state || address.region || address.county || '').trim();
+  const country = String(address.country || '').trim();
+  const label = [...new Set([name, region, country].filter(Boolean))].join(', ');
+  return {
+    name,
+    label: label || name,
+    region,
+    country,
+    countryCode: String(address.country_code || '').toUpperCase(),
+    lat: Number(place.lat) || null,
+    lon: Number(place.lon) || null,
+    source: 'openstreetmap',
+  };
+}
+
+export function createCitySearch({
+  fetchImpl = fetch,
+  baseUrl = CITY_SEARCH_BASE_URL,
+  minIntervalMs = CITY_SEARCH_MIN_INTERVAL_MS,
+  now = Date.now,
+  wait = sleep,
+  env = process.env,
+} = {}) {
+  const cache = new Map();
+  let lastRequestAt = 0;
+  return {
+    async search(query, acceptLanguage = '') {
+      const q = cleanCityQuery(query);
+      if (q.length < CITY_SEARCH_MIN_QUERY) return { cities: [], attribution: CITY_SEARCH_ATTRIBUTION };
+      const lang = String(acceptLanguage || '').slice(0, 120);
+      const cacheKey = `${q.toLowerCase()}|${lang.toLowerCase()}`;
+      const cached = cache.get(cacheKey);
+      if (cached && cached.expires > now()) return cached.value;
+
+      const elapsed = now() - lastRequestAt;
+      if (minIntervalMs > 0 && elapsed < minIntervalMs) await wait(minIntervalMs - elapsed);
+      lastRequestAt = now();
+
+      const url = new URL(baseUrl);
+      url.searchParams.set('limit', String(Math.min(Math.max(CITY_SEARCH_LIMIT, 1), 20)));
+      url.searchParams.set('namePrefix', q);
+      url.searchParams.set('sort', '-population');
+      url.searchParams.set('types', 'CITY');
+      if (env.CITY_SEARCH_CONTACT_EMAIL) url.searchParams.set('email', env.CITY_SEARCH_CONTACT_EMAIL);
+
+      const headers = {
+        Accept: 'application/json',
+        'Accept-Language': lang || 'en,pt;q=0.9,es;q=0.8',
+        'User-Agent': env.CITY_SEARCH_USER_AGENT || 'NODAL city search/1.0',
+      };
+      const appUrl = env.PUBLIC_BASE_URL || env.NEXT_PUBLIC_APP_URL;
+      if (appUrl) headers.Referer = appUrl;
+
+      const res = await fetchImpl(url, { headers });
+      if (!res.ok) throw new Error(`city provider returned ${res.status}`);
+      const payload = await res.json();
+      const rows = Array.isArray(payload?.data) ? payload.data : payload;
+      const seen = new Set();
+      const cities = (Array.isArray(rows) ? rows : [])
+        .map(cityResultFromPlace)
+        .filter(Boolean)
+        .filter((city) => {
+          const key = city.label.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      const value = { cities, attribution: CITY_SEARCH_ATTRIBUTION };
+      cache.set(cacheKey, { value, expires: now() + CITY_SEARCH_CACHE_MS });
+      return value;
+    },
+  };
+}
+
+export function validateRuntimeConfig(env = process.env) {
+  const backend = dataBackend(env);
+  if (env.NODE_ENV === 'production') {
+    if (backend === 'sqlite' && !env.DATABASE_PATH) throw new Error('DATABASE_PATH is required in production');
+    if (env.COOKIE_SECURE === 'false') throw new Error('COOKIE_SECURE must not be false in production');
+    publicBaseUrl(env);
+  }
+  if (backend === 'supabase') resolveSupabaseEnv(env, { requireServer: true });
+  paymentsConfig(env);
+  if (env.NODE_ENV === 'production' && env.PAYMENTS_MODE === 'live') publicBillingConfig(env);
+}
 
 function send(res, status, body, headers = {}) {
   const isObj = typeof body === 'object';
   const payload = isObj ? JSON.stringify(body) : body;
-  res.writeHead(status, {
+  const responseHeaders = securityHeaders({
     'Content-Type': isObj ? 'application/json; charset=utf-8' : headers['Content-Type'] || 'text/plain; charset=utf-8',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cache-Control': 'no-store',
     ...headers,
   });
+  res.writeHead(status, responseHeaders);
   res.end(payload);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, securityHeaders({
+    Location: location,
+    'Cache-Control': 'no-store',
+  }));
+  res.end();
 }
 
 /* CSRF guard for state-changing requests: same-origin only */
@@ -77,6 +368,94 @@ function readJsonBody(req) {
   });
 }
 
+function readRawBody(req, { max = 128 * 1024 } = {}) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > max) {
+        req.destroy();
+        reject(Object.assign(new Error('body too large'), { status: 413 }));
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+function stripeTimestampToIso(value) {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000).toISOString() : '';
+}
+
+async function recordStripeEvent(repository, event) {
+  if (!(await repository.recordStripeEventId({ id: event?.id, type: event?.type, created: event?.created }))) return;
+  const object = event?.data?.object;
+  if (!object || typeof object !== 'object') return;
+  const stripeEventCreated = Number(event.created) || 0;
+  if (event.type === 'checkout.session.completed') {
+    const userId = String(object.client_reference_id || object.metadata?.nodal_user_id || '');
+    if (!userId || !(await repository.getUserById(userId))) return;
+    const paid = object.payment_status === 'paid' || object.payment_status === 'no_payment_required';
+    await repository.upsertSubscription({
+      userId,
+      stripeCustomerId: String(object.customer || ''),
+      stripeSubscriptionId: String(object.subscription || ''),
+      stripeCheckoutSessionId: String(object.id || ''),
+      status: paid ? 'active' : 'pending',
+      stripeEventCreated,
+    });
+    return;
+  }
+  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const stripeSubscriptionId = String(object.id || '');
+    const status = event.type === 'customer.subscription.deleted' ? 'canceled' : object.status;
+    const currentPeriodEnd = stripeTimestampToIso(object.current_period_end);
+    const updated = await repository.updateSubscriptionByStripeId(stripeSubscriptionId, { status, currentPeriodEnd, stripeEventCreated });
+    if (!updated && object.metadata?.nodal_user_id && await repository.getUserById(object.metadata.nodal_user_id)) {
+      await repository.upsertSubscription({
+        userId: object.metadata.nodal_user_id,
+        stripeCustomerId: String(object.customer || ''),
+        stripeSubscriptionId,
+        status,
+        currentPeriodEnd,
+        stripeEventCreated,
+      });
+    }
+  }
+}
+
+function sanitizeProfilePatch(body) {
+  if (!body || typeof body !== 'object') throw Object.assign(new Error('invalid profile payload'), { status: 400 });
+  if ('fullName' in body && String(body.fullName).trim().length < 2) {
+    throw Object.assign(new Error('full name is required'), { status: 400 });
+  }
+  const li = body.partC?.linkedin ?? body.linkedin ?? '';
+  if (li && !/^https:\/\/(www\.)?linkedin\.com\/(in|company)\/[A-Za-z0-9_-]+/.test(String(li))) {
+    throw Object.assign(new Error('LinkedIn link must use https://linkedin.com/in/...'), { status: 400 });
+  }
+  const portfolio = body.partC?.portfolio ?? '';
+  if (portfolio && !/^https?:\/\/\S+\.\S+/.test(String(portfolio))) {
+    throw Object.assign(new Error('portfolio link must start with http:// or https://'), { status: 400 });
+  }
+  return body;
+}
+
+function requireAuth(res, user) {
+  if (user) return true;
+  send(res, 401, { error: 'authentication required' });
+  return false;
+}
+
+function resolveUserId(param, sessionUser, useDb) {
+  if (param === 'me') return sessionUser?.id ?? null;
+  if (!useDb) return param;
+  return sessionUser?.id === param ? param : null;
+}
+
 async function serveStatic(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') { send(res, 405, { error: 'method not allowed' }); return; }
   let decoded;
@@ -86,10 +465,14 @@ async function serveStatic(req, res, pathname) {
   let filePath = path.normalize(path.join(ROOT, decoded));
   if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) { send(res, 404, { error: 'not found' }); return; }
 
-  // never serve backend source, package metadata, or dotfiles
+  // never serve backend source, internal docs, package metadata, data, or dotfiles
   const rel = path.relative(ROOT, filePath);
   const segments = rel === '' ? [] : rel.split(path.sep);
-  if (segments[0] === 'server' || rel === 'package.json' || segments.some((s) => s.startsWith('.'))) {
+  if (
+    STATIC_BLOCKED_ROOTS.has(segments[0])
+    || STATIC_BLOCKED_FILES.has(rel)
+    || segments.some((s) => s.startsWith('.'))
+  ) {
     send(res, 404, { error: 'not found' });
     return;
   }
@@ -104,10 +487,11 @@ async function serveStatic(req, res, pathname) {
 
   try {
     const data = await fs.readFile(filePath);
+    const headers = type.startsWith('text/html') ? htmlSecurityHeaders() : securityHeaders();
     res.writeHead(200, {
+      ...headers,
       'Content-Type': type,
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      ...(type.startsWith('text/html') ? { 'Cache-Control': 'no-store' } : {}),
     });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
@@ -115,97 +499,289 @@ async function serveStatic(req, res, pathname) {
   }
 }
 
-export function createApp({ store = createStore(), cache = new MemoryCache(), payments = { config: paymentsConfig(), fetchImpl: fetch } } = {}) {
+export function createApp({
+  store,
+  db,
+  cache = new MemoryCache(),
+  payments = { config: paymentsConfig(), fetchImpl: fetch },
+  citySearch = createCitySearch(),
+  repository = createRepository({ db, store }),
+} = {}) {
+  const useDb = Boolean(repository);
+  const authLimiter = createWindowRateLimiter({ windowMs: AUTH_RATE_WINDOW_MS, limit: AUTH_RATE_LIMIT });
+  const interactionLimiter = createWindowRateLimiter({ windowMs: INTERACTION_RATE_WINDOW_MS, limit: INTERACTION_RATE_LIMIT });
+  let visibilityVersion = 1;
+  const cacheKey = (id) => `rec:v${visibilityVersion}:${id}`;
+  if (repository?.cleanupExpiredSessions) repository.cleanupExpiredSessions();
+
   const server = http.createServer(async (req, res) => {
     try {
-      const { pathname } = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+      const url = new URL(req.url, 'http://127.0.0.1');
+      const { pathname } = url;
+      const canonical = canonicalPathname(pathname);
+      const session = useDb ? await repository.resolveSession(req) : { user: null, cookies: [] };
+      const sessionUser = session.user;
 
-      if (!pathname.startsWith('/api/')) { await serveStatic(req, res, pathname); return; }
+      if (!pathname.startsWith('/api/')) {
+        if (useDb && canonical && PRIVATE_PAGES.has(canonical) && !sessionUser) {
+          redirect(res, `/login.html?next=${encodeURIComponent(canonical)}`);
+          return;
+        }
+        if (useDb && canonical === '/login.html' && sessionUser) {
+          redirect(res, safeNext(url.searchParams.get('next')));
+          return;
+        }
+        await serveStatic(req, res, pathname);
+        return;
+      }
 
       if (req.method === 'GET' && pathname === '/api/health') { send(res, 200, { ok: true }); return; }
 
+      if (req.method === 'GET' && pathname === '/api/billing/config') {
+        send(res, 200, publicBillingConfig());
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/api/cities') {
+        if (useDb && !requireAuth(res, sessionUser)) return;
+        try {
+          send(res, 200, await citySearch.search(url.searchParams.get('q'), req.headers['accept-language']));
+        } catch {
+          send(res, 200, { cities: [], attribution: CITY_SEARCH_ATTRIBUTION });
+        }
+        return;
+      }
+
+      if (useDb && req.method === 'GET' && pathname === '/api/auth/state') {
+        send(res, 200, { authenticated: Boolean(sessionUser) });
+        return;
+      }
+
+      if (useDb && req.method === 'POST' && pathname === '/api/auth/signup') {
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const rate = authLimiter.take(`signup:${clientIp(req)}`);
+        if (!rate.ok) {
+          send(res, 429, { error: 'too many authentication attempts' }, { 'Retry-After': String(rate.retryAfter) });
+          return;
+        }
+        const body = await readJsonBody(req);
+        const fullName = String(body.fullName ?? body.name ?? '').trim();
+        const email = String(body.email ?? '').trim().toLowerCase();
+        const password = String(body.password ?? '');
+        if (fullName.length < 2) { send(res, 400, { error: 'full name is required' }); return; }
+        if (!validateEmail(email)) { send(res, 400, { error: 'valid email is required' }); return; }
+        if (!validatePassword(password)) { send(res, 400, { error: 'password must be at least 8 characters' }); return; }
+        const result = await repository.signup({ fullName, email, password, env: process.env });
+        if (result.error) { send(res, result.status, { error: result.error }); return; }
+        send(res, result.status, {
+          user: result.user,
+          requiresEmailConfirmation: Boolean(result.requiresEmailConfirmation),
+        }, result.cookies?.length ? { 'Set-Cookie': result.cookies } : {});
+        return;
+      }
+
+      if (useDb && req.method === 'POST' && pathname === '/api/auth/login') {
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const rate = authLimiter.take(`login:${clientIp(req)}`);
+        if (!rate.ok) {
+          send(res, 429, { error: 'too many authentication attempts' }, { 'Retry-After': String(rate.retryAfter) });
+          return;
+        }
+        const body = await readJsonBody(req);
+        const email = String(body.email ?? '').trim().toLowerCase();
+        const password = String(body.password ?? '');
+        if (!validateEmail(email)) { send(res, 401, { error: 'invalid email or password' }); return; }
+        const result = await repository.login({ email, password, env: process.env });
+        if (result.error) { send(res, result.status, { error: result.error }); return; }
+        send(res, result.status, { user: result.user }, result.cookies?.length ? { 'Set-Cookie': result.cookies } : {});
+        return;
+      }
+
+      if (useDb && req.method === 'POST' && pathname === '/api/auth/logout') {
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const result = await repository.logout(req, process.env);
+        send(res, 200, { ok: true }, result.cookies?.length ? { 'Set-Cookie': result.cookies } : {});
+        return;
+      }
+
+      if (useDb && req.method === 'GET' && pathname === '/api/auth/me') {
+        if (!requireAuth(res, sessionUser)) return;
+        send(res, 200, { user: repository.toApiUser(sessionUser) });
+        return;
+      }
+
+      if (useDb && req.method === 'GET' && pathname === '/api/me/export') {
+        if (!requireAuth(res, sessionUser)) return;
+        send(res, 200, { data: await repository.exportUserData(sessionUser.id) });
+        return;
+      }
+
+      if (useDb && req.method === 'DELETE' && pathname === '/api/me') {
+        if (!requireAuth(res, sessionUser)) return;
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const body = await readJsonBody(req);
+        if (String(body.confirmEmail || '').trim().toLowerCase() !== String(sessionUser.email).toLowerCase()) {
+          send(res, 400, { error: 'account deletion requires email confirmation' });
+          return;
+        }
+        await repository.deleteUserById(sessionUser.id);
+        const result = await repository.logout(req, process.env);
+        send(res, 200, { ok: true }, result.cookies?.length ? { 'Set-Cookie': result.cookies } : {});
+        return;
+      }
+
+      if (useDb && req.method === 'GET' && pathname === '/api/billing/status') {
+        if (!requireAuth(res, sessionUser)) return;
+        send(res, 200, { subscription: await repository.getSubscriptionStatus(sessionUser.id) });
+        return;
+      }
+
+      if (useDb && req.method === 'PATCH' && pathname === '/api/me') {
+        if (!requireAuth(res, sessionUser)) return;
+        if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
+        const oldKey = cacheKey(sessionUser.id);
+        const oldConsent = repository.toApiUser(sessionUser).partC.consent;
+        const patch = sanitizeProfilePatch(await readJsonBody(req));
+        const user = await repository.updateUserProfile(sessionUser.id, patch);
+        const newConsent = repository.toApiUser(user).partC.consent;
+        if (oldConsent !== newConsent) visibilityVersion += 1;
+        await cache.del(oldKey, cacheKey(sessionUser.id));
+        send(res, 200, { user: repository.toApiUser(user) });
+        return;
+      }
+
       if (req.method === 'GET' && pathname === '/api/users') {
+        if (useDb) {
+          if (!requireAuth(res, sessionUser)) return;
+          send(res, 200, {
+            users: (await repository.listDirectoryUsers()).map((row) => {
+              const user = repository.toApiUser(row);
+              return { id: user.id, name: user.fullName, role: user.title, city: user.city, interests: user.interests, linkedin: user.linkedin };
+            }),
+          });
+          return;
+        }
         send(res, 200, { users: [...store.users.values()].map(({ id, name, role, city, interests }) => ({ id, name, role, city, interests })) });
         return;
       }
 
       let m = pathname.match(/^\/api\/recommendations\/([^/]+)$/);
       if (m && req.method === 'GET') {
-        const userId = m[1];
+        if (useDb && !requireAuth(res, sessionUser)) return;
+        const userId = resolveUserId(m[1], sessionUser, useDb);
+        if (!userId) { send(res, 403, { error: 'forbidden user scope' }); return; }
         if (!ID_RE.test(userId)) { send(res, 400, { error: 'invalid user id' }); return; }
-        if (!store.users.has(userId)) { send(res, 404, { error: 'unknown user' }); return; }
+        const activeStore = useDb ? await repository.loadGraphStore({ viewerId: userId }) : store;
+        if (!activeStore.users.has(userId)) { send(res, 404, { error: 'unknown user' }); return; }
 
-        const cached = await cache.get(recKey(userId));
+        const cached = await cache.get(cacheKey(userId));
         if (cached) {
           send(res, 200, cached, { 'X-Cache': 'HIT', 'Content-Type': 'application/json; charset=utf-8' });
           return;
         }
 
-        const recommendations = recommend(store, userId);
+        const recommendations = recommend(activeStore, userId) ?? [];
         const payload = { userId, generatedAt: new Date().toISOString(), recommendations };
-        await cache.set(recKey(userId), JSON.stringify(payload), REC_TTL_MS);
+        await cache.set(cacheKey(userId), JSON.stringify(payload), REC_TTL_MS);
         send(res, 200, payload, { 'X-Cache': 'MISS' });
         return;
       }
 
       m = pathname.match(/^\/api\/users\/([^/]+)\/(follow|interactions)$/);
       if (m && req.method === 'POST') {
+        if (useDb && !requireAuth(res, sessionUser)) return;
         if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
-        const userId = m[1];
+        const userId = resolveUserId(m[1], sessionUser, useDb);
         const action = m[2];
-        if (!ID_RE.test(userId) || !store.users.has(userId)) { send(res, 404, { error: 'unknown user' }); return; }
+        if (!userId) { send(res, 403, { error: 'forbidden user scope' }); return; }
+        const activeStore = useDb ? await repository.loadGraphStore({ viewerId: userId }) : store;
+        if (!ID_RE.test(userId) || !activeStore.users.has(userId)) { send(res, 404, { error: 'unknown user' }); return; }
 
         const body = await readJsonBody(req);
         const targetId = body.targetId;
-        if (typeof targetId !== 'string' || !ID_RE.test(targetId) || !store.users.has(targetId) || targetId === userId) {
+        if (typeof targetId !== 'string' || !ID_RE.test(targetId) || !activeStore.users.has(targetId) || targetId === userId) {
           send(res, 400, { error: 'invalid targetId' });
           return;
         }
 
         if (action === 'follow') {
-          addFollow(store, userId, targetId);
+          if (useDb) await repository.addFollow(userId, targetId);
+          else addFollow(store, userId, targetId);
         } else {
-          if (!INTERACTION_TYPES.has(body.type)) { send(res, 400, { error: 'invalid interaction type' }); return; }
-          recordInteraction(store, userId, targetId, body.type);
+          if (!API_INTERACTION_TYPES.has(body.type)) { send(res, 400, { error: 'invalid interaction type' }); return; }
+          const rate = interactionLimiter.take(userId);
+          if (!rate.ok) {
+            send(res, 429, { error: 'too many interaction events' }, { 'Retry-After': String(rate.retryAfter) });
+            return;
+          }
+          if (useDb) await repository.recordInteraction(userId, targetId, body.type);
+          else recordInteraction(store, userId, targetId, body.type);
         }
 
         // graph changed — both parties' recommendations are stale
-        await cache.del(recKey(userId), recKey(targetId));
+        await cache.del(cacheKey(userId), cacheKey(targetId));
         send(res, 200, { ok: true, userId, targetId, action });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/checkout') {
+        if (useDb && !requireAuth(res, sessionUser)) return;
         if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
         const body = await readJsonBody(req);
         if (body.plan !== 'membership' || !CYCLES.has(body.cycle)) {
           send(res, 400, { error: 'invalid plan or cycle' });
           return;
         }
-        if (!payments.config) { send(res, 501, { error: 'payments not configured', preview: true }); return; }
-        // PUBLIC_BASE_URL pins the Stripe return URLs in production (Host header is client-supplied)
-        const origin = process.env.PUBLIC_BASE_URL ?? `http://${req.headers.host ?? 'localhost'}`;
-        const session = await createCheckoutSession({ cycle: body.cycle, origin }, payments.config, payments.fetchImpl);
+        if (!payments.config) { send(res, 501, { error: 'payments not configured' }); return; }
+        let origin;
+        try {
+          origin = publicBaseUrl();
+        } catch (err) {
+          send(res, err.status ?? 500, { error: err.message });
+          return;
+        }
+        const session = await createCheckoutSession({
+          cycle: body.cycle,
+          origin,
+          user: useDb ? repository.toApiUser(sessionUser) : { id: 'local', email: '' },
+        }, payments.config, payments.fetchImpl);
         send(res, 200, session);
+        return;
+      }
+
+      if (useDb && req.method === 'POST' && pathname === '/api/stripe/webhook') {
+        if (!payments.config?.webhookSecret) { send(res, 503, { error: 'payments webhook not configured' }); return; }
+        const payload = await readRawBody(req);
+        let event;
+        try {
+          event = verifyStripeWebhook(payload, req.headers['stripe-signature'], payments.config.webhookSecret);
+        } catch (err) {
+          send(res, err.status ?? 400, { error: err.message });
+          return;
+        }
+        await recordStripeEvent(repository, event);
+        send(res, 200, { received: true });
         return;
       }
 
       send(res, 404, { error: 'not found' });
     } catch (err) {
       const status = err.status ?? 500;
-      if (status >= 500) console.error('request error:', err);
-      if (!res.headersSent) send(res, status, { error: status >= 500 ? 'internal error' : err.message });
+      if (status >= 500) console.error('request error:', safeErrorMessage(err));
+      if (!res.headersSent) send(res, status, { error: status >= 500 ? 'internal error' : safeErrorMessage(err) });
       else res.end();
     }
   });
+  if (repository?.close) server.on('close', () => repository.close());
   return server;
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  process.on('unhandledRejection', (err) => console.error('unhandled rejection:', err));
-  process.on('uncaughtException', (err) => { console.error('uncaught exception:', err); process.exit(1); });
+  process.on('unhandledRejection', (err) => console.error('unhandled rejection:', safeErrorMessage(err)));
+  process.on('uncaughtException', (err) => { console.error('uncaught exception:', safeErrorMessage(err)); process.exit(1); });
 
+  validateRuntimeConfig();
   const port = Number(process.env.PORT || 4173);
   const cache = await createCache();
   createApp({ cache }).listen(port, () => {

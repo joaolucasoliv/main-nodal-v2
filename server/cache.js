@@ -4,6 +4,7 @@
    degrade to misses; they never take the API down. */
 
 import net from 'node:net';
+import tls from 'node:tls';
 
 export class MemoryCache {
   constructor({ now = Date.now } = {}) {
@@ -28,7 +29,11 @@ export class RedisCache {
   constructor(url) {
     const u = new URL(url);
     this.host = u.hostname || '127.0.0.1';
-    this.port = Number(u.port || 6379);
+    this.tls = u.protocol === 'rediss:';
+    this.port = Number(u.port || (this.tls ? 6380 : 6379));
+    this.username = decodeURIComponent(u.username || '');
+    this.password = decodeURIComponent(u.password || '');
+    this.db = u.pathname && u.pathname !== '/' ? u.pathname.slice(1) : '';
     this.sock = null;
     this.dead = false;
     this.pending = [];      // FIFO resolvers, one per in-flight command
@@ -37,9 +42,31 @@ export class RedisCache {
 
   connect(timeoutMs = 1000) {
     return new Promise((resolve, reject) => {
-      const sock = net.createConnection({ host: this.host, port: this.port });
+      const connect = this.tls ? tls.connect : net.createConnection;
+      const options = this.tls
+        ? { host: this.host, port: this.port, servername: this.host }
+        : { host: this.host, port: this.port };
+      const sock = connect(options);
       const timer = setTimeout(() => { sock.destroy(); reject(new Error('redis connect timeout')); }, timeoutMs);
-      sock.once('connect', () => { clearTimeout(timer); this.sock = sock; resolve(); });
+      sock.once('connect', async () => {
+        clearTimeout(timer);
+        this.sock = sock;
+        try {
+          if (this.password) {
+            const args = this.username ? ['AUTH', this.username, this.password] : ['AUTH', this.password];
+            if (await this.#cmd(...args) === null) throw new Error('redis auth failed');
+          }
+          if (this.db) {
+            if (!/^\d+$/.test(this.db)) throw new Error('redis database index must be numeric');
+            if (await this.#cmd('SELECT', this.db) === null) throw new Error('redis database select failed');
+          }
+          resolve();
+        } catch (err) {
+          this.dead = true;
+          sock.destroy();
+          reject(err);
+        }
+      });
       sock.once('error', (err) => { clearTimeout(timer); this.dead = true; reject(err); });
       sock.on('data', (chunk) => this.#feed(chunk));
       sock.on('close', () => {
@@ -101,7 +128,7 @@ export async function createCache(log = console) {
     try {
       const redis = new RedisCache(url);
       await redis.connect();
-      log.log(`cache: redis at ${redis.host}:${redis.port}`);
+      log.log(`cache: redis at ${redis.tls ? 'rediss' : 'redis'}://${redis.host}:${redis.port}`);
       return redis;
     } catch (err) {
       log.warn(`cache: redis unavailable (${err.message}) — falling back to in-memory TTL cache`);

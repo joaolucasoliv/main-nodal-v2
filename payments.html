@@ -6,13 +6,13 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta name="description" content="Preview of NODAL monthly membership billing: founding pricing, cancel anytime." />
+  <meta name="description" content="NODAL supporting membership: help sustain the community while keeping access open." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cline x1='20' y1='22' x2='44' y2='42' stroke='%2359bc53' stroke-width='5'/%3E%3Ccircle cx='20' cy='22' r='11' fill='%233d5c38'/%3E%3Ccircle cx='44' cy='42' r='8' fill='%2359bc53'/%3E%3C/svg%3E" />
-  <title>NODAL · Monthly membership</title>
+  <title>NODAL · Supporting membership</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body class="pay-page">
 
@@ -23,16 +23,16 @@
     </a>
 
     <nav class="nav-main">
-      <a href="index.html#membership">Opportunities</a>
-      <a href="index.html#knowledge">Knowledge</a>
+      <a href="index.html#membership">Programs</a>
+      <a href="index.html#knowledge">Community</a>
       <a href="index.html#resources">Resources</a>
     </nav>
 
     <nav class="nav-account">
       <a href="dashboard.html">Profile</a>
-      <a href="index.html#platform">Your Network</a>
+      <a href="index.html#platform">Community</a>
       <a href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Sistema Urbano ↗</a>
-      <a class="btn btn-pill btn-nav" href="index.html#contact">Join NODAL</a>
+      <a class="btn btn-pill btn-nav" href="login.html?next=/dashboard.html">Join NODAL</a>
     </nav>
 
     <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu">
@@ -43,11 +43,10 @@
   <main>
     <section class="pay-hero">
       <div class="wrap">
-        <p class="eyebrow">Membership</p>
-        <h1 class="pay-title">One membership.<br/><em>Billed monthly.</em></h1>
-        <p class="pay-sub">Monthly billing is coming to NODAL. Here is a preview of how it will work,
-          with founding pricing that may change at launch.</p>
-        <span class="pay-flag">Coming soon</span>
+        <p class="eyebrow">Supporting membership</p>
+        <h1 class="pay-title">Keep access open.<br/><em>Support the community.</em></h1>
+        <p class="pay-sub">NODAL starts free. Supporting membership helps sustain the shared civic work behind courses, community circles and regional opportunities.</p>
+        <span class="pay-flag">Secure checkout</span>
       </div>
     </section>
 
@@ -57,58 +56,58 @@
         <div class="pay-plans">
           <div class="cycle" role="group" aria-label="Billing cycle">
             <button type="button" class="cycle-btn is-on" id="cycleMonthly" aria-pressed="true">Monthly</button>
-            <button type="button" class="cycle-btn" id="cycleAnnual" aria-pressed="false">Annual <span class="cycle-save">2 months free</span></button>
+            <button type="button" class="cycle-btn" id="cycleAnnual" aria-pressed="false">Annual <span class="cycle-save" id="cycleAnnualBadge" hidden></span></button>
           </div>
 
           <article class="pay-plan">
             <header>
-              <h2>Free</h2>
+              <h2>Community access</h2>
               <p class="pay-price"><span class="pay-amount">Free</span></p>
             </header>
             <ul>
-              <li>Courses NODAL offers</li>
-              <li>Library &amp; borrowing program</li>
-              <li>Learning &amp; opportunities feed</li>
-              <li>Jobs available in your region</li>
+              <li>Open courses and community sessions</li>
+              <li>Library resources and shared reading circles</li>
+              <li>Learning and opportunity updates</li>
+              <li>Calls and opportunities in your region</li>
             </ul>
-            <a class="btn btn-ghost" href="index.html#contact">Join free</a>
+            <a class="btn btn-ghost" href="login.html?next=/dashboard.html">Join free</a>
           </article>
 
           <article class="pay-plan pay-plan-pro">
-            <div class="plan-flag">Most value</div>
+            <div class="plan-flag">Supporter</div>
             <header>
-              <h2>Membership</h2>
+              <h2>Supporting membership</h2>
               <p class="pay-price">
-                <span class="pay-amount" id="proPrice">US$10</span>
-                <span class="pay-per" id="proPer">/ month</span>
+                <span class="pay-amount" id="proPrice">Configured at checkout</span>
+                <span class="pay-per" id="proPer"></span>
               </p>
               <p class="pay-price-note" id="proNote">Cancel anytime.</p>
             </header>
             <ul>
               <li>Everything in Free, plus:</li>
-              <li>Jobs matched specifically to you</li>
-              <li>AI discovery of people, projects &amp; knowledge</li>
-              <li>Premium visibility within the network</li>
-              <li>Network intelligence: who's doing what, where &amp; how</li>
+              <li>Programs and opportunities curated for your interests</li>
+              <li>Guided discovery of people, projects &amp; knowledge</li>
+              <li>Member directory and deeper community profile</li>
+              <li>Early access to labs, circles and co-creation formats</li>
             </ul>
-            <button type="button" class="btn btn-primary" id="selectPro">Choose membership</button>
+            <button type="button" class="btn btn-primary" id="selectPro">Support the community</button>
           </article>
         </div>
 
         <aside class="pay-summary" aria-label="Order summary">
-          <p class="pay-summary-kicker">Order summary (preview)</p>
-          <h2>Membership</h2>
+          <p class="pay-summary-kicker">Support summary</p>
+          <h2>Supporting membership</h2>
           <dl>
             <div><dt>Billing cycle</dt><dd id="sumCycle">Monthly</dd></div>
-            <div><dt>Price</dt><dd id="sumPrice">US$10 / month</dd></div>
+            <div><dt>Price</dt><dd id="sumPrice">Configured at checkout</dd></div>
             <div><dt>Renews</dt><dd id="sumRenews">Every month, until you cancel</dd></div>
           </dl>
           <div class="pay-methods">
             <p>Pay with</p>
-            <span>Card</span><span>Mercado Pago</span><span>Yape · Plin</span>
+            <span>Card via Stripe</span>
           </div>
-          <a class="btn btn-primary btn-block" href="mailto:fmuro@sistemaurbano.org,malegre@sistemaurbano.org?subject=NODAL%20membership%20launch%20notice">Notify me at launch</a>
-          <p class="pay-preview-note" id="payPreviewNote" hidden>Checkout preview — live payments open at launch. We'll email you the day they do.</p>
+          <button type="button" class="btn btn-primary btn-block" id="summaryCheckout">Continue to secure checkout</button>
+          <p class="pay-checkout-note" id="payCheckoutNote" hidden>Checkout is handled by Stripe. NODAL never sees or stores card numbers.</p>
         </aside>
       </div>
     </section>
@@ -116,30 +115,26 @@
     <section class="pay-faq">
       <div class="wrap">
         <p class="eyebrow">FAQ</p>
-        <h2 class="section-title">Billing questions</h2>
+        <h2 class="section-title">Membership questions</h2>
         <details>
           <summary>Can I cancel anytime?</summary>
-          <p>Yes. Monthly plans stop at the end of the paid month; annual plans at the end of the
-            paid year. Your free account stays active either way.</p>
+          <p>Yes. Monthly plans stop at the end of the paid month; annual plans at the end of the paid year. Your free community account stays active either way.</p>
         </details>
         <details>
           <summary>What currency will I be charged in?</summary>
-          <p>Prices are in US dollars. Local methods (Mercado Pago, Yape, Plin) charge the
-            equivalent at checkout.</p>
+          <p>The checkout provider shows the final charge before payment.</p>
         </details>
         <details>
           <summary>Will I get a receipt?</summary>
-          <p>Every charge comes with an emailed receipt, and organisation invoices on request.</p>
+          <p>Every charge comes with an emailed receipt, and organization invoices are available on request.</p>
         </details>
         <details>
           <summary>Is this pricing final?</summary>
-          <p>No. This is founding-member preview pricing. Whatever you see at launch is what
-            early members keep.</p>
+          <p>No. This is founding-member pricing. Early supporters will keep the launch price they choose.</p>
         </details>
         <details>
           <summary>How will payments be processed?</summary>
-          <p>Through a certified checkout provider (Stripe-ready today). You pay on their secure
-            page and come straight back; NODAL never sees or stores card numbers.</p>
+          <p>Through a certified checkout provider. You pay on their secure page and come straight back; NODAL never sees or stores card numbers.</p>
         </details>
       </div>
     </section>
@@ -148,15 +143,15 @@
   <footer class="footer pay-footer" id="contact">
     <div class="footer-bottom">
       <div class="wrap">
-        <h2>Get in touch</h2>
+        <h2>Let's talk</h2>
         <p class="footer-rights">2026 All Rights Reserved</p>
         <a class="footer-email" href="mailto:fmuro@sistemaurbano.org,malegre@sistemaurbano.org">Email: fmuro@sistemaurbano.org, malegre@sistemaurbano.org</a>
-        <a class="footer-old" href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">Previous website: sistemaurbano.org/nodal ↗</a>
+        <a class="footer-old" href="https://sistemaurbano.org/nodal/" target="_blank" rel="noopener noreferrer">NODAL at Sistema Urbano ↗</a>
       </div>
     </div>
   </footer>
 
   <script src="nav.js?v=13"></script>
-  <script src="payments.js?v=13"></script>
+  <script src="payments.js?v=14"></script>
 </body>
 </html>

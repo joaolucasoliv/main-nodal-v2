@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MemoryCache } from './cache.js';
+import { MemoryCache, RedisCache } from './cache.js';
 
 test('memory cache: set/get roundtrip within TTL', async () => {
   let t = 0;
@@ -26,4 +26,14 @@ test('memory cache: del invalidates multiple keys', async () => {
   await cache.del('a', 'b');
   assert.equal(await cache.get('a'), null);
   assert.equal(await cache.get('b'), null);
+});
+
+test('redis cache preserves TLS, auth, and database settings from REDIS_URL', () => {
+  const cache = new RedisCache('rediss://user:p%40ss@redis.example:6380/2');
+  assert.equal(cache.tls, true);
+  assert.equal(cache.host, 'redis.example');
+  assert.equal(cache.port, 6380);
+  assert.equal(cache.username, 'user');
+  assert.equal(cache.password, 'p@ss');
+  assert.equal(cache.db, '2');
 });

@@ -1,77 +1,76 @@
 /* member dashboard with a real user layer.
-   The active user · Camila (demo), a profile you create, or a generated
-   random member · drives every card: identity, role stack, trust ladder,
-   growth branches, badges, completeness, timeline. State persists per user
-   in localStorage. All DOM is createElement/textContent · no HTML injection. */
+   The authenticated API user drives every card: identity, role stack, trust
+   ladder, growth branches, badges, completeness, timeline. State persists in
+   the server database. All DOM is createElement/textContent · no HTML injection. */
 (() => {
   'use strict';
 
   /* ================= persisted state ================= */
-  const KEY = 'nodal.dashboard.v2';
-  function loadState() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
-      const user = raw.user ?? null;
-      // normalize older or malformed saved states: partC must exist and carry every field
-      if (user) {
-        if (!user.partC || typeof user.partC !== 'object') {
-          user.partC = { bio: '', linkedin: '', portfolio: '', references: '', availability: '', consent: false };
-        } else if (user.partC.linkedin === undefined) {
-          user.partC.linkedin = '';
-        }
-      }
-      return { user, notifRead: Boolean(raw.notifRead) };
-    } catch { return { user: null, notifRead: false }; }
+  const DEFAULT_PART_C = { bio: '', linkedin: '', portfolio: '', references: '', availability: '', consent: false };
+  const DEFAULT_INDICATORS = { leadership: 'No', transmission: 'No' };
+  const state = { user: null, notifRead: false };
+
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+    if (res.status === 401) {
+      location.assign(`/login.html?next=${encodeURIComponent(location.pathname)}`);
+      throw new Error('authentication required');
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `api ${res.status}`);
+    return data;
   }
-  function saveState() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* private mode */ }
+
+  function normalizeApiUser(user) {
+    const partC = { ...DEFAULT_PART_C, ...(user.partC || {}) };
+    return {
+      kind: 'member',
+      id: user.id,
+      name: user.fullName || user.name || '',
+      role: user.title || user.role || 'Member',
+      city: user.city || '',
+      active: Array.isArray(user.active) ? user.active : [],
+      assessed: Boolean(user.assessed),
+      topics: Array.isArray(user.topics) ? user.topics : [],
+      skills: Array.isArray(user.skills) ? user.skills : [],
+      indicators: { ...DEFAULT_INDICATORS, ...(user.indicators || {}) },
+      partC,
+      requests: user.requests && typeof user.requests === 'object' ? user.requests : {},
+      mentorApplied: Boolean(user.mentorApplied),
+      notifRead: Boolean(user.notifRead),
+    };
   }
-  const state = loadState();
+
+  function serializeUser(user) {
+    return {
+      fullName: user.name,
+      title: user.role,
+      city: user.city,
+      interests: user.topics.map((t) => String(t.name || t).toLowerCase()).filter(Boolean),
+      active: user.active,
+      topics: user.topics,
+      skills: user.skills,
+      indicators: user.indicators,
+      partC: user.partC,
+      requests: user.requests,
+      mentorApplied: user.mentorApplied,
+      assessed: user.assessed,
+      notifRead: state.notifRead,
+    };
+  }
 
   /* ================= model ================= */
   const LEVELS = ['Exploring', 'Practicing', 'Proficient', 'Reference'];
   const TAXONOMY = ['Mobility', 'Public space', 'Housing', 'Climate & resilience', 'Care & gender',
     'Governance & participation', 'Safety', 'Informality', 'Heritage', 'Urban data & tech',
     'Land use & planning', 'Environment & nature'];
-  const CITIES = ['Lima', 'Bogotá', 'CDMX', 'São Paulo', 'Santiago', 'Medellín', 'Montevideo', 'Quito', 'Buenos Aires', 'Curitiba'];
-  const COORDS = {
-    Lima: '12.04°S · 77.04°W', 'Bogotá': '4.71°N · 74.07°W', CDMX: '19.43°N · 99.13°W',
-    'São Paulo': '23.55°S · 46.63°W', Santiago: '33.45°S · 70.66°W', 'Medellín': '6.24°N · 75.58°W',
-    Montevideo: '34.90°S · 56.16°W', Quito: '0.18°S · 78.47°W', 'Buenos Aires': '34.60°S · 58.38°W',
-    Curitiba: '25.43°S · 49.27°W',
-  };
-  const ROLES_LIST = ['Architect', 'Urban Planner', 'Civil Engineer', 'Sociologist', 'Data Analyst', 'Community Leader', 'Journalist', 'Geographer'];
-  const RANDOM_NAMES = ['Joaquín P.', 'Beatriz L.', 'Antônia R.', 'Marco T.', 'Luana S.', 'Felipe G.', 'Ximena V.', 'Caio M.', 'Renata F.', 'Pedro H.'];
-
   const blankPartC = () => ({ bio: '', linkedin: '', portfolio: '', references: '', availability: '', consent: false });
   const makeTopic = (name, level = 1) => ({ name, level, validatedAt: 0, endorsedAt: 0 });
-
-  function demoUser() {
-    return {
-      kind: 'demo',
-      name: 'Camila',
-      role: 'Architect · municipal agency',
-      city: 'Lima',
-      assessed: true,
-      topics: [
-        { name: 'Public space', level: 3, validatedAt: 3, endorsedAt: 0 },
-        { name: 'Participation', level: 4, validatedAt: 4, endorsedAt: 0 },
-        { name: 'Urban data', level: 1, validatedAt: 0, endorsedAt: 0 },
-      ],
-      skills: [
-        { name: 'Facilitation', level: 3, validatedAt: 0, endorsedAt: 3, note: '×4' },
-        { name: 'Teaching & training', level: 2, validatedAt: 0, endorsedAt: 0 },
-      ],
-      indicators: { leadership: 'Regularly', transmission: 'Informally' },
-      partC: {
-        bio: 'Architect at a municipal agency in Lima. I work where public space and participation meet.',
-        linkedin: 'https://www.linkedin.com/in/camila-nodal',
-        portfolio: 'https://camila-portfolio.example',
-        references: '', availability: '', consent: false,
-      },
-      requests: {}, mentorApplied: false,
-    };
-  }
+  const cleanCity = (value) => String(value || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  const cleanRole = (value) => String(value || '').trim().replace(/\s+/g, ' ').slice(0, 80);
 
   function newUser(name, city, role, topicNames) {
     return {
@@ -86,30 +85,25 @@
     };
   }
 
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  function randomUser() {
-    const topics = [...TAXONOMY].sort(() => Math.random() - 0.5).slice(0, 3)
-      .map((n) => makeTopic(n, 1 + Math.floor(Math.random() * 3)));
-    const u = newUser(pick(RANDOM_NAMES), pick(CITIES), pick(ROLES_LIST), []);
-    u.topics = topics;
-    u.assessed = true;
-    u.indicators = {
-      leadership: pick(['No', 'Once or twice', 'Regularly']),
-      transmission: pick(['No', 'Informally', 'Formally']),
-    };
-    return u;
-  }
-
-  let U = state.user || demoUser();
-  const isDemo = () => U.kind === 'demo';
+  let U = null;
   const maxLevel = () => Math.max(0, ...U.topics.map((t) => t.level));
 
   function setUser(user, persist = true) {
     U = user;
-    if (persist) { state.user = user; saveState(); }
+    if (persist) { state.user = user; touchUser(); }
     applyAll();
   }
-  function touchUser() { if (state.user) { state.user = U; } saveState(); }
+  async function saveProfile() {
+    if (!U) return;
+    const data = await api('/api/me', { method: 'PATCH', body: JSON.stringify(serializeUser(U)) });
+    U = normalizeApiUser(data.user);
+    state.user = U;
+    state.notifRead = U.notifRead;
+  }
+  function touchUser() {
+    if (state.user) state.user = U;
+    saveProfile().catch(() => {});
+  }
 
   const stageOf = (t) => (t.validatedAt >= t.level ? 'validated' : t.endorsedAt >= t.level ? 'endorsed' : 'self');
   const stageLabel = { validated: 'NODAL-validated', endorsed: 'peer-endorsed', self: 'self-declared' };
@@ -129,14 +123,12 @@
       avatar.textContent = (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
     }
     const place = document.getElementById('userPlace');
-    if (place) place.textContent = `${COORDS[U.city] ?? ''} · ${U.city}`.replace(/^ · /, '');
+    if (place) place.textContent = U.city || 'Complete your city';
     const sub = document.getElementById('greetSub');
     if (sub) {
-      sub.textContent = isDemo()
-        ? 'Your node is active in 3 spaces this week: 2 new matches, one mentorship session today, and your Ambassador path is 4 of 6 months in.'
-        : U.assessed
-          ? 'Your node is live and your self-assessment is in. Your suggested track and open paths are below.'
-          : 'Your node is live. Four minutes of self-assessment opens your growth paths — then the network starts working for you.';
+      sub.textContent = U.assessed
+        ? 'Your profile is live and your self-assessment is in. Your suggested path and open community routes are below.'
+        : 'Your profile is live. Four minutes of self-assessment helps the community understand what you care about and where you want to grow.';
     }
     const liChip = document.getElementById('userLinkedIn');
     const liText = document.getElementById('userLinkedInText');
@@ -153,15 +145,6 @@
 
   /* ================= role stack ================= */
   function userRoles() {
-    if (isDemo()) {
-      return [
-        { label: 'Community Member', scope: 'since 2025', cls: 'r-validated' },
-        { label: 'Skilled Practitioner', scope: 'Public space', cls: 'r-validated' },
-        { label: 'Mentor', scope: 'Participatory processes', cls: 'r-validated' },
-        { label: 'Local Connector', scope: U.city, cls: 'r-validated' },
-        { label: 'Ambassador', scope: 'in progress · 4/6 months', cls: 'r-path' },
-      ];
-    }
     const roles = [{ label: 'Community Member', scope: 'since today', cls: 'r-validated' }];
     roles.push({ label: 'Active Contributor', scope: 'next · 3 actions in 90 days', cls: 'r-path' });
     if (U.assessed && maxLevel() >= 3 && U.indicators.transmission !== 'No') {
@@ -190,17 +173,8 @@
     const mix = document.getElementById('roleMix');
     const legend = document.getElementById('roleMixLegend');
     if (mix && legend) {
-      mix.style.display = isDemo() ? '' : 'none';
-      if (isDemo()) {
-        legend.replaceChildren();
-        [['dot-a', 'Practice 45%'], ['dot-b', 'Mentoring 30%'], ['dot-c', 'Connecting 25%']].forEach(([cls, txt]) => {
-          const dot = document.createElement('span');
-          dot.className = cls;
-          legend.append(dot, `${txt} `);
-        });
-      } else {
-        legend.textContent = 'Your activity mix appears here once you start participating.';
-      }
+      mix.style.display = 'none';
+      legend.textContent = 'Your activity mix appears here once you start participating.';
     }
   }
 
@@ -213,25 +187,14 @@
     if (!hours || !mentees || !note || !cta) return;
     const em = document.createElement('em');
     em.textContent = 'h';
-    if (isDemo()) {
-      hours.replaceChildren('03:45', em);
-      mentees.textContent = '2';
-      note.replaceChildren();
-      const s1 = document.createElement('strong'); s1.textContent = 'participatory processes';
-      const s2 = document.createElement('strong'); s2.textContent = 'urban data';
-      note.append('You mentor in ', s1, ', and you’re a mentee in ', s2, '. That asymmetry is the point.');
-      cta.textContent = 'Next session · Thu 18:00';
-      cta.setAttribute('href', '#growth');
-    } else {
-      hours.replaceChildren('00:00', em);
-      mentees.textContent = '0';
-      const qualifies = U.assessed && maxLevel() >= 3 && U.indicators.transmission !== 'No';
-      note.textContent = qualifies
-        ? 'You qualify for the mentor fast-track. Validation can take as little as two weeks.'
-        : 'Not mentoring yet. Every member can be a mentor in one topic and a mentee in another.';
-      cta.textContent = U.assessed ? 'Review your assessment' : 'Start the self-assessment';
-      cta.setAttribute('href', '#assessment');
-    }
+    hours.replaceChildren('00:00', em);
+    mentees.textContent = '0';
+    const qualifies = U.assessed && maxLevel() >= 3 && U.indicators.transmission !== 'No';
+    note.textContent = qualifies
+      ? 'You may be ready to mentor. Validation starts with a light review and a conversation.'
+      : 'Not mentoring yet. Every member can learn from others and, in time, support someone else.';
+    cta.textContent = U.assessed ? 'Review your assessment' : 'Start the self-assessment';
+    cta.setAttribute('href', '#assessment');
   }
 
   /* ================= trust ladder ================= */
@@ -274,65 +237,12 @@
 
   /* ================= growth branches ================= */
   function branchDefs() {
-    if (isDemo()) {
-      return {
-        knowledge: {
-          route: 'Mentor → Instructor / Facilitator', stateLabel: 'Active role', stateCls: 'st-active',
-          kicker: 'Knowledge branch', title: 'Mentor → Instructor / Facilitator',
-          now: 'You hold: Mentor (Participatory processes) · validated',
-          criteria: [
-            { label: 'Mentor or practitioner standing', done: true },
-            { label: 'Teaching or training history (formal or informal)', done: true },
-            { label: 'Co-facilitate one session with positive feedback', done: false },
-          ],
-          unlock: 'Unlocks: leading NODAL courses & masterclasses: compensated teaching spaces.',
-          cta: 'Request a co-facilitation slot', requested: 'Slot requested ✓',
-        },
-        project: {
-          route: 'Practitioner → Project Expert',
-          stateLabel: null, stateCls: null, // computed below
-          kicker: 'Project branch', title: 'Skilled Practitioner → Project Expert',
-          now: 'You hold: Skilled Practitioner (Public space) · validated',
-          criteria: [
-            { label: 'Level 3+ (Proficient) in at least one topic', done: maxLevel() >= 3 },
-            { label: 'Availability declared for assignments', done: U.partC.availability !== '' },
-            { label: 'Part C of your profile complete', done: partCDone() },
-            { label: 'Vetted portfolio (reviewed by NODAL)', done: false },
-          ],
-          unlock: 'Unlocks: paid institutional projects and advisory roles.',
-          cta: 'Submit for validation', requested: 'Submitted for review ✓',
-        },
-        territory: {
-          route: 'Local Connector → Ambassador / Fellow', stateLabel: '4 / 6 months', stateCls: 'st-progress',
-          kicker: 'Territory branch', title: 'Local Connector → Ambassador / Fellow',
-          now: `You hold: Local Connector (${U.city}) · validated`,
-          criteria: [
-            { label: '6+ months of sustained contribution · 4 of 6 done', done: false },
-            { label: 'Leadership evidence (convening, hosting, mapping)', done: true },
-            { label: 'Application or invitation · 2026 cohort opens Q3', done: false },
-          ],
-          unlock: 'Unlocks: fellowship cohort with a defined mandate: a geography, topic, or community.',
-          cta: 'Express interest in the cohort', requested: 'Interest registered ✓',
-        },
-        community: {
-          route: 'Active Contributor → recognition', stateLabel: 'Sustained', stateCls: 'st-active',
-          kicker: 'Community branch', title: 'Active Contributor → recognition badges',
-          now: 'You hold: Active Contributor · sustained',
-          criteria: [
-            { label: '3+ meaningful actions in the last 90 days', done: true },
-            { label: 'Active 6 consecutive months · 4 of 6 done', done: false },
-          ],
-          unlock: 'Unlocks: the candidate pool for every other branch. Top contributors are the natural shortlist.',
-          cta: 'See open contribution prompts',
-        },
-      };
-    }
     const teaches = U.indicators.transmission !== 'No';
     const top = U.topics.find((t) => t.level === maxLevel());
     return {
       knowledge: {
-        route: 'Member → Mentor', stateLabel: U.assessed && maxLevel() >= 3 && teaches ? 'Fast-track open' : 'Open path', stateCls: U.assessed && maxLevel() >= 3 && teaches ? 'st-ready' : 'st-next',
-        kicker: 'Knowledge branch', title: 'Community Member → Mentor',
+        route: 'Member → Mentor', stateLabel: U.assessed && maxLevel() >= 3 && teaches ? 'Mentor review open' : 'Open path', stateCls: U.assessed && maxLevel() >= 3 && teaches ? 'st-ready' : 'st-next',
+        kicker: 'Knowledge path', title: 'Community Member → Mentor',
         now: 'You hold: Community Member',
         criteria: [
           { label: 'Level 3+ (Proficient) in at least one topic', done: U.assessed && maxLevel() >= 3 },
@@ -340,12 +250,12 @@
           { label: 'Availability declared (2+ h / month)', done: U.partC.availability !== '' },
           { label: 'Two references on file', done: U.partC.references !== '' },
         ],
-        unlock: 'Unlocks: the mentor directory and mentee matching: validation call + one trial session.',
+        unlock: 'Opens: the mentor directory, a validation conversation and one trial session.',
         cta: 'Start mentor application', requested: 'Application started ✓',
       },
       project: {
         route: 'Member → Skilled Practitioner', stateLabel: null, stateCls: null,
-        kicker: 'Project branch', title: 'Community Member → Skilled Practitioner',
+        kicker: 'Practice path', title: 'Community Member → Skilled Practitioner',
         now: 'You hold: Community Member',
         criteria: [
           { label: 'Level 2+ (Practicing) in at least one topic', done: U.assessed && maxLevel() >= 2 },
@@ -353,30 +263,30 @@
           { label: 'Part C of your profile complete', done: partCDone() },
           { label: 'Peer endorsements after a first collaboration', done: false },
         ],
-        unlock: `Unlocks: project shortlists${top ? ` in ${top.name}` : ''} and the Project Expert pathway.`,
+        unlock: `Opens: project conversations${top ? ` in ${top.name}` : ''} and a practitioner pathway.`,
         cta: 'Submit for review', requested: 'Submitted for review ✓',
       },
       territory: {
         route: 'Member → Local Connector', stateLabel: 'Open path', stateCls: 'st-next',
-        kicker: 'Territory branch', title: `Community Member → Local Connector (${U.city})`,
+        kicker: 'Territory path', title: `Community Member → Local Connector (${U.city})`,
         now: 'You hold: Community Member',
         criteria: [
           { label: `Territorial knowledge declared (${U.city})`, done: true },
           { label: 'Maps or convenes local actors', done: false },
           { label: 'Validated by the NODAL team', done: false },
         ],
-        unlock: 'Unlocks: convening power and territorial referrals: the road to Ambassador.',
+        unlock: 'Opens: local convening, territorial referrals and a path toward community hosting.',
         cta: 'Express interest', requested: 'Interest registered ✓',
       },
       community: {
         route: 'Member → Active Contributor', stateLabel: '0 of 3 actions', stateCls: 'st-next',
-        kicker: 'Community branch', title: 'Community Member → Active Contributor',
+        kicker: 'Community path', title: 'Community Member → Active Contributor',
         now: 'You hold: Community Member',
         criteria: [
           { label: '3+ meaningful actions in 90 days · 0 of 3', done: false },
           { label: 'Active 6 consecutive months · 0 of 6', done: false },
         ],
-        unlock: 'Unlocks: the candidate pool for every other branch.',
+        unlock: 'Opens: recognition and invitations to take part in other community paths.',
         cta: 'See open contribution prompts',
       },
     };
@@ -493,35 +403,19 @@
   }
 
   function badgeData() {
-    if (isDemo()) {
-      return [
-        { fam: 'Role', name: 'Mentor', scope: 'Participatory processes', unlock: 'mentor directory · mentee matching', state: 'earned' },
-        { fam: 'Role', name: 'Skilled Practitioner', scope: 'Public space', unlock: 'directory filters · project shortlists', state: 'earned' },
-        { fam: 'Role', name: 'Local Connector', scope: 'Lima', unlock: 'convening power · territorial referrals', state: 'earned' },
-        { fam: 'Recognition', name: 'Founding Member', scope: 'First cohort', unlock: 'founding pricing kept · early access', state: 'granted' },
-        { fam: 'Contribution', name: 'Profile Pioneer', scope: 'Self-assessment done', unlock: 'track suggestion · better matches', state: 'earned' },
-        { fam: 'Contribution', name: 'Knowledge Sharer', scope: '5+ resources shared', unlock: 'visibility · facilitation shortlist', state: 'earned' },
-        { fam: 'Contribution', name: 'Event Host', scope: 'Lima knowledge circle', unlock: 'Instructor & Connector pathways', state: 'earned' },
-        { fam: 'Contribution', name: 'Connector', scope: '3 of 5 introductions', unlock: 'Local Connector shortlist', state: 'progress' },
-        { fam: 'Contribution', name: 'Consistent Member', scope: '4 of 6 active months', unlock: 'priority access to limited-seat programs', state: 'progress' },
-        { fam: 'Contribution', name: 'Course Graduate', scope: 'Urban data basics · 3/8', unlock: 'feeds your topic levels', state: 'progress' },
-        { fam: 'Role', name: 'Instructor', scope: 'Co-facilitate 1 session first', unlock: 'compensated teaching spaces', state: 'locked' },
-        { fam: 'Role', name: 'Ambassador / Fellow', scope: '2026 cohort · opens Q3', unlock: 'defined mandate · regional representation', state: 'locked' },
-      ];
-    }
     const mentorReady = U.assessed && maxLevel() >= 3 && U.indicators.transmission !== 'No';
     return [
-      { fam: 'Contribution', name: 'Profile Pioneer', scope: U.assessed ? 'Self-assessment done' : 'Complete the self-assessment', unlock: 'track suggestion · better matches', state: U.assessed ? 'earned' : 'progress' },
-      { fam: 'Contribution', name: 'First Contribution', scope: 'Share your first resource or post', unlock: 'starts your Active Contributor count', state: 'locked' },
-      { fam: 'Contribution', name: 'Knowledge Sharer', scope: '0 of 5 resources shared', unlock: 'visibility · facilitation shortlist', state: 'locked' },
-      { fam: 'Contribution', name: 'Event Host', scope: 'Host or co-host a community event', unlock: 'Instructor & Connector pathways', state: 'locked' },
-      { fam: 'Contribution', name: 'Connector', scope: '0 of 5 introductions', unlock: 'Local Connector shortlist', state: 'locked' },
-      { fam: 'Contribution', name: 'Course Graduate', scope: 'Complete a NODAL course', unlock: 'feeds your topic levels', state: 'locked' },
-      { fam: 'Contribution', name: 'Consistent Member', scope: '0 of 6 active months', unlock: 'priority access to limited-seat programs', state: 'locked' },
-      { fam: 'Role', name: 'Skilled Practitioner', scope: 'Level 2–3 + endorsements', unlock: 'directory filters · project shortlists', state: 'locked' },
-      { fam: 'Role', name: 'Mentor', scope: mentorReady ? 'Fast-track open · apply below' : 'Level 3+ + transmission + validation', unlock: 'mentor directory · mentee matching', state: mentorReady ? 'progress' : 'locked' },
-      { fam: 'Role', name: 'Local Connector', scope: U.city, unlock: 'convening power · territorial referrals', state: 'locked' },
-      { fam: 'Recognition', name: 'Founding Member', scope: 'First cohort · by invitation', unlock: 'founding pricing kept · early access', state: 'locked' },
+      { fam: 'Contribution', name: 'Profile Pioneer', scope: U.assessed ? 'Self-assessment done' : 'Complete the self-assessment', unlock: 'suggested path · better connections', state: U.assessed ? 'earned' : 'progress' },
+      { fam: 'Contribution', name: 'First Contribution', scope: 'Share your first resource or post', unlock: 'starts your Active Contributor path', state: 'locked' },
+      { fam: 'Contribution', name: 'Knowledge Sharer', scope: '0 of 5 resources shared', unlock: 'community visibility · facilitation shortlist', state: 'locked' },
+      { fam: 'Contribution', name: 'Event Host', scope: 'Host or co-host a community event', unlock: 'facilitation and connector pathways', state: 'locked' },
+      { fam: 'Contribution', name: 'Connector', scope: '0 of 5 introductions', unlock: 'local connector pathway', state: 'locked' },
+      { fam: 'Contribution', name: 'Course Graduate', scope: 'Complete a NODAL course', unlock: 'supports your topic levels', state: 'locked' },
+      { fam: 'Contribution', name: 'Consistent Member', scope: '0 of 6 active months', unlock: 'priority access to small-group programs', state: 'locked' },
+      { fam: 'Role', name: 'Skilled Practitioner', scope: 'Level 2–3 + endorsements', unlock: 'community profile · project conversations', state: 'locked' },
+      { fam: 'Role', name: 'Mentor', scope: mentorReady ? 'Mentor review open · apply below' : 'Level 3+ + transmission + validation', unlock: 'mentor directory · learning circles', state: mentorReady ? 'progress' : 'locked' },
+      { fam: 'Role', name: 'Local Connector', scope: U.city, unlock: 'local convening · territorial referrals', state: 'locked' },
+      { fam: 'Recognition', name: 'Founding Member', scope: 'First cohort · by invitation', unlock: 'founding price · early community formats', state: 'locked' },
     ];
   }
 
@@ -549,7 +443,7 @@
       const unlock = document.createElement('p');
       unlock.className = 'badge-unlock';
       const strong = document.createElement('strong');
-      strong.textContent = 'Unlocks: ';
+      strong.textContent = 'Opens: ';
       unlock.append(strong, b.unlock);
       tile.append(top, name, unlock);
       return tile;
@@ -559,7 +453,7 @@
   /* ================= self-assessment ================= */
   const TRACKS = {
     leader: { name: 'Leader / Mentor potential', why: 'Level 3+ in a topic, transmission experience, and your intent says you can offer mentoring.' },
-    specialist: { name: 'Specialist', why: 'Level 3–4 and you lead work. The Project Expert pathway and expert sessions are your fastest routes.' },
+    specialist: { name: 'Specialist', why: 'Level 3–4 and you lead work. Practitioner review and expert sessions are your fastest routes.' },
     practitioner: { name: 'Practitioner', why: 'Level 2–3 with project experience. Contribution prompts and endorsements will move you fastest.' },
     learner: { name: 'Learner', why: 'You are exploring. Courses, open events and find-a-mentor are the right starting doors.' },
   };
@@ -694,8 +588,8 @@
     const note = document.getElementById('partCNote');
     if (note) {
       note.textContent = partCDone()
-        ? 'Part C complete. Validated roles (Mentor, Project Expert) can enter review.'
-        : 'Completing Part C unlocks Mentor and Project Expert validation.';
+        ? 'Part C complete. Mentor and practitioner validation can enter review.'
+        : 'Completing Part C opens mentor and practitioner validation.';
     }
     const btn = document.getElementById('partCBtn');
     if (btn) btn.textContent = partCDone() ? 'Edit Part C' : 'Complete Part C';
@@ -760,16 +654,49 @@
   /* ================= user dialog ================= */
   const userDialog = document.getElementById('userDialog');
   const userForm = document.getElementById('userForm');
+  let openUserDialog = () => {};
   const uc = {
     name: document.getElementById('ucName'),
     city: document.getElementById('ucCity'),
+    cityOptions: document.getElementById('ucCityOptions'),
     role: document.getElementById('ucRole'),
     topics: document.getElementById('ucTopics'),
     error: document.getElementById('ucError'),
+    dataControls: document.getElementById('ucDataControls'),
+    exportData: document.getElementById('ucExport'),
+    deleteAccount: document.getElementById('ucDelete'),
   };
   if (userDialog && userForm) {
-    CITIES.forEach((c) => { const o = document.createElement('option'); o.textContent = c; uc.city.appendChild(o); });
-    ROLES_LIST.forEach((r) => { const o = document.createElement('option'); o.textContent = r; uc.role.appendChild(o); });
+    let cityTimer = null;
+    let cityAbort = null;
+    const setCityOptions = (cities) => {
+      if (!uc.cityOptions) return;
+      uc.cityOptions.replaceChildren(...cities.map((city) => {
+        const option = document.createElement('option');
+        option.value = city.label || city.name;
+        option.label = city.region ? `${city.name} · ${city.region}` : city.name;
+        return option;
+      }));
+    };
+    const scheduleCitySearch = () => {
+      clearTimeout(cityTimer);
+      const query = cleanCity(uc.city.value);
+      if (query.length < 2) {
+        setCityOptions([]);
+        return;
+      }
+      cityTimer = setTimeout(async () => {
+        if (cityAbort) cityAbort.abort();
+        cityAbort = new AbortController();
+        try {
+          const data = await api(`/api/cities?q=${encodeURIComponent(query)}`, { signal: cityAbort.signal });
+          setCityOptions(Array.isArray(data.cities) ? data.cities : []);
+        } catch (err) {
+          if (err.name !== 'AbortError') setCityOptions([]);
+        }
+      }, 280);
+    };
+    uc.city?.addEventListener('input', scheduleCitySearch);
     TAXONOMY.forEach((t) => {
       const label = document.createElement('label');
       const input = document.createElement('input');
@@ -786,19 +713,22 @@
     const ucTitle = document.getElementById('ucTitle');
     const ucSub = document.getElementById('ucSub');
     const ucSubmit = document.getElementById('ucSubmit');
-    const openUserDialog = () => {
+    openUserDialog = () => {
       uc.error.hidden = true;
-      // members edit in place; the demo and first visits go through the create flow
+      // members edit in place; first visits complete the account profile
       const editing = U.kind === 'member';
       if (ucTitle) ucTitle.textContent = editing ? 'Edit your profile' : 'Who’s exploring today?';
       if (ucSub) {
         ucSub.textContent = editing
           ? 'Update your identity! Your profile is the heart of your dashboard experience, so keep it fresh as you grow.'
-          : 'Create a profile to see the dashboard as a brand-new member, or jump in as a generated one.';
+          : 'Complete your profile so connections, paths and member tools can use real data.';
       }
       if (ucSubmit) ucSubmit.textContent = editing ? 'Save changes' : 'Create profile';
+      if (uc.dataControls) uc.dataControls.hidden = !editing;
       uc.name.value = editing ? U.name : '';
-      if (editing) { uc.city.value = U.city; uc.role.value = U.role; }
+      uc.city.value = editing ? U.city : '';
+      uc.role.value = editing ? U.role : '';
+      setCityOptions(editing && U.city ? [{ name: U.city, label: U.city }] : []);
       const current = new Set(editing ? U.topics.map((t) => t.name) : []);
       uc.topics.querySelectorAll('input').forEach((i) => { i.checked = current.has(i.value); });
       if (typeof userDialog.showModal === 'function' && !userDialog.open) userDialog.showModal();
@@ -807,61 +737,83 @@
 
     userForm.addEventListener('submit', (e) => {
       const name = uc.name.value.trim();
+      const city = cleanCity(uc.city.value);
+      const role = cleanRole(uc.role.value);
       const topics = [...uc.topics.querySelectorAll('input:checked')].map((i) => i.value);
-      if (!name || topics.length === 0) {
+      if (!name || !city || !role || topics.length === 0) {
         e.preventDefault();
-        uc.error.textContent = !name ? 'Add your name to create the profile.' : 'Pick at least one topic.';
+        uc.error.textContent = !name
+          ? 'Add your name to create the profile.'
+          : !city
+            ? 'Add your city to place your profile in the community.'
+            : !role
+              ? 'Add your current role.'
+              : 'Pick at least one topic.';
         uc.error.hidden = false;
         return;
       }
       if (U.kind === 'member') {
         // edit in place — keep levels and validation for topics that stay
         U.name = name;
-        U.city = uc.city.value;
-        U.role = uc.role.value;
+        U.city = city;
+        U.role = role;
         const byName = new Map(U.topics.map((t) => [t.name, t]));
         U.topics = topics.map((n) => byName.get(n) ?? makeTopic(n));
         setUser(U);
       } else {
-        setUser(newUser(name, uc.city.value, uc.role.value, topics));
+        setUser(newUser(name, city, role, topics));
       }
     });
-    document.getElementById('ucRandom')?.addEventListener('click', () => {
-      setUser(randomUser());
-      userDialog.close();
-    });
-    document.getElementById('ucDemo')?.addEventListener('click', () => {
-      setUser(demoUser());
-      userDialog.close();
-    });
-    document.getElementById('ucReset')?.addEventListener('click', () => {
-      try { localStorage.removeItem(KEY); } catch { /* ignore */ }
-      location.reload();
+
+    uc.exportData?.addEventListener('click', async () => {
+      try {
+        const exported = await api('/api/me/export');
+        const blob = new Blob([JSON.stringify(exported.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'nodal-member-data.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        uc.error.textContent = err.message || 'Could not export your data.';
+        uc.error.hidden = false;
+      }
     });
 
-    if (!state.user) openUserDialog();   // first visit: choose who you are
+    uc.deleteAccount?.addEventListener('click', async () => {
+      const email = prompt('Type your account email to delete your NODAL account.');
+      if (!email) return;
+      try {
+        await api('/api/me', { method: 'DELETE', body: JSON.stringify({ confirmEmail: email }) });
+        location.assign('/login.html');
+      } catch (err) {
+        uc.error.textContent = err.message || 'Could not delete this account.';
+        uc.error.hidden = false;
+      }
+    });
   }
+
+  document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+    } finally {
+      location.assign('/login.html');
+    }
+  });
 
   /* ================= timeline + week strip ================= */
   function timelineData() {
-    if (isDemo()) {
-      return [
-        { time: 'Thu · 18:00', name: 'Mentorship session · Roberto', sub: 'Participatory processes · video call', cls: 'tl-strong' },
-        { time: 'Fri · 10:00', name: 'Course module · Urban data basics', sub: 'You’re the mentee here · module 3 of 8' },
-        { time: 'Sat · 11:30', name: 'Knowledge circle · Lima chapter', sub: 'Local Connector · 12 confirmed' },
-        { time: 'Pending', name: 'Endorsement request · facilitation', sub: 'From Inés D. after the Callao audit', cls: 'tl-soft' },
-        { time: 'Last week', name: 'Resource shared · corridor survey kit', sub: '12 downloads · counts toward Knowledge Sharer', extra: true },
-        { time: 'Last week', name: 'Introduction made · Sofía ↔ Inés', sub: 'Connector badge · 3 of 5', extra: true },
-        { time: 'May 28', name: 'Mentorship session · Ana', sub: 'Feedback received · counts toward Instructor', cls: 'tl-soft', extra: true },
-      ];
-    }
     const first = U.topics[0]?.name ?? 'your topic';
     return [
       { time: 'Today', name: 'Profile created · Part A complete', sub: 'Badge progress: Profile Pioneer', cls: 'tl-strong' },
       { time: 'Next', name: U.assessed ? 'Track suggested · explore your branches' : 'Complete your self-assessment', sub: 'Takes about 4 minutes' },
       { time: 'Suggested', name: `Browse the ${first} feed`, sub: 'Courses and open calls in your topics' },
       { time: 'Suggested', name: `Join the next knowledge circle · ${U.city}`, sub: 'Your city chapter', cls: 'tl-soft' },
-      { time: 'Locked', name: 'Mentorship session', sub: 'Available after matching', cls: 'tl-soft', extra: true },
+      { time: 'Later', name: 'Mentorship session', sub: 'Available after first community connection', cls: 'tl-soft', extra: true },
       { time: 'Locked', name: 'First introduction', sub: 'Counts toward the Connector badge', extra: true },
     ];
   }
@@ -922,19 +874,13 @@
   }
 
   /* ================= search ================= */
+  const currentCity = (fallback = 'Your city') => U?.city || fallback;
   const SEARCH_DATA = {
-    People: [
-      { label: 'Flavia Muro', meta: 'Urban Mobility Researcher · Lima', href: 'profile.html' },
-      { label: 'Diego A.', meta: 'Mobility Engineer · Lima', href: 'profile.html' },
-      { label: 'Sofía M.', meta: 'City Planner · CDMX', href: 'profile.html' },
-      { label: 'Lucas O.', meta: 'Civic Technologist · São Paulo', href: 'profile.html' },
-      { label: 'Valeria C.', meta: 'Urban Economist · Santiago', href: 'profile.html' },
-      { label: 'Mariana R.', meta: 'Urban Researcher · Bogotá', href: 'profile.html' },
-    ],
+    People: [],
     Projects: [
-      { label: 'BRT community engagement', meta: 'Lima · active', href: 'index.html#platform' },
-      { label: 'Cycling network audit', meta: 'Callao · 2025', href: 'index.html#platform' },
-      { label: 'Corridor housing study', meta: 'Bogotá · forming team', href: 'index.html#platform' },
+      { label: 'Community engagement project', meta: `${currentCity()} · active`, href: 'index.html#platform' },
+      { label: 'Cycling network audit', meta: `${currentCity('Regional')} · open`, href: 'index.html#platform' },
+      { label: 'Corridor housing study', meta: 'Regional · forming team', href: 'index.html#platform' },
     ],
     Knowledge: [
       { label: 'Urban data basics', meta: 'Course · module 3 of 8', href: 'index.html#resources' },
@@ -942,15 +888,15 @@
       { label: 'Mobility evidence briefs', meta: 'Library · 12 entries', href: 'index.html#resources' },
     ],
     Opportunities: [
-      { label: 'Community engagement lead · BRT', meta: 'Lima · paid', href: 'index.html#membership' },
-      { label: 'GIS volunteer · flood mapping', meta: 'Montevideo', href: 'index.html#membership' },
+      { label: 'Community engagement lead', meta: `${currentCity()} · paid`, href: 'index.html#membership' },
+      { label: 'GIS volunteer · flood mapping', meta: 'Regional', href: 'index.html#membership' },
       { label: 'Open call: public space fellows', meta: 'Regional · closes Jul 15', href: 'index.html#membership' },
     ],
   };
   fetch('/api/users').then((r) => (r.ok ? r.json() : null)).then((data) => {
     if (!data || !Array.isArray(data.users)) return;
     const people = data.users
-      .filter((u) => u && typeof u.name === 'string' && u.id !== 'you')
+      .filter((u) => u && typeof u.name === 'string' && u.id !== U?.id)
       .map((u) => ({ label: u.name, meta: `${u.role} · ${u.city}`, href: 'profile.html' }));
     if (people.length) SEARCH_DATA.People = people;
   }).catch(() => { /* static hosting */ });
@@ -999,17 +945,10 @@
 
   /* ================= notifications ================= */
   function notifData() {
-    if (isDemo()) {
-      return [
-        { title: 'Endorsement request · facilitation', sub: 'Inés D. · after the Callao audit' },
-        { title: 'New mentee match: Roberto', sub: 'Participatory processes · 92% match' },
-        { title: 'Ambassador cohort opens Q3', sub: 'Territory branch · applications soon' },
-      ];
-    }
     return [
       { title: 'Welcome to NODAL', sub: 'Say hello in the community space' },
-      { title: U.assessed ? 'Your track is ready' : 'Complete your self-assessment', sub: U.assessed ? 'See your growth paths' : 'Unlocks your suggested track' },
-      { title: 'Ambassador cohort opens Q3', sub: 'Territory branch · applications soon' },
+      { title: U.assessed ? 'Your path is ready' : 'Complete your self-assessment', sub: U.assessed ? 'See your community paths' : 'Opens your suggested path' },
+      { title: 'Community host cohort opens Q3', sub: 'Territory path · applications soon' },
     ];
   }
   const notifBtn = document.getElementById('notifBtn');
@@ -1041,7 +980,7 @@
     });
     notifClear?.addEventListener('click', () => {
       state.notifRead = true;
-      saveState();
+      touchUser();
       renderNotifs();
     });
   }
@@ -1076,6 +1015,7 @@
 
   /* ================= apply everything ================= */
   function applyAll() {
+    if (!U) return;
     renderIdentity();
     renderRoles();
     renderMentorCard();
@@ -1089,5 +1029,18 @@
     renderTimeline();
     renderNotifs();
   }
-  applyAll();
+  async function init() {
+    try {
+      const data = await api('/api/auth/me');
+      U = normalizeApiUser(data.user);
+      state.user = U;
+      state.notifRead = U.notifRead;
+      applyAll();
+      if (!U.city || !U.role || U.topics.length === 0) openUserDialog();
+    } catch {
+      // api() handles the login redirect for 401. Other failures leave the page
+      // quiet instead of showing stale hardcoded state.
+    }
+  }
+  init();
 })();

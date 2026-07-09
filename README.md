@@ -1,40 +1,104 @@
 # NODAL
 
-Landing site for NODAL — Nodos Urbanos de América Latina — plus a zero-dependency
-recommendation API.
+NODAL is a deployable web app for authenticated member profiles, a private dashboard, persisted recommendations, and a Stripe-ready supporting membership flow.
 
-## Static site
+The app intentionally keeps the existing lightweight stack:
 
-`index.html`, `payments.html`, `profile.html`, `dashboard.html` work on any
-static host. With no backend the match deck shows the authored demo card.
+- Static HTML/CSS/JS frontend.
+- Node HTTP server in `server/server.js`.
+- Vercel serverless adapter in `api/index.js`.
+- Supabase Auth/Postgres for production on Vercel.
+- SQLite fallback for local development and automated tests.
+- No production mock users are loaded automatically.
+- Stripe checkout and webhooks are server-side and fail closed when credentials are absent or incomplete.
 
-The landing page has an EN / ES / PT switcher in the navbar (`i18n.js`):
-English lives in the markup, Spanish and Portuguese in the dictionary, and the
-choice persists in `localStorage`. Typography is Montserrat only.
+## Requirements
 
-## Recommendation API
+- Node.js 22 or newer.
+- Supabase project for production deploys.
+- Vercel project configured with the environment variables from `.env.example`.
+
+## Install
 
 ```sh
-npm start            # node server/server.js — serves the site + API on :4173
-PORT=8080 npm start  # custom port
-REDIS_URL=redis://localhost:6379 npm start   # use Redis for the 5-min cache
+npm install
 ```
 
-Without `REDIS_URL` an in-memory TTL cache with identical semantics is used.
+## Environment
 
-| Endpoint | Description |
-| --- | --- |
-| `GET /api/recommendations/:userId` | Ranked profiles — weighted graph traversal (BFS, decay 0.5/hop) + collaborative filtering. Cached 5 min (`X-Cache: HIT/MISS`). |
-| `POST /api/users/:userId/follow` | `{ "targetId": "..." }` — adds an edge, invalidates both users' caches. |
-| `POST /api/users/:userId/interactions` | `{ "targetId": "...", "type": "view\|like\|skip\|message" }` — records engagement, invalidates caches. |
-| `GET /api/users` | Public profile list. |
-| `GET /api/health` | Liveness probe. |
+Copy `.env.example` for local experiments, but put real production values in Vercel Project Settings:
 
-Edge weights blend shared interests (0.35), mutual connections (0.25),
-engagement history (0.25) and activity overlap (0.15).
+```sh
+cp .env.example .env
+```
+
+Production on Vercel should use:
+
+- `DATA_BACKEND=supabase`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SECRET_KEY` or legacy `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_APP_URL` and/or `PUBLIC_BASE_URL`
+- Stripe and LinkedIn placeholders from `.env.example` when those integrations are configured
+
+Local-only SQLite fallback:
+
+```sh
+DATA_BACKEND=sqlite DATABASE_PATH=./data/nodal.sqlite npm run migrate
+DATA_BACKEND=sqlite npm start
+```
+
+## Database
+
+Production schema lives in:
+
+```sh
+supabase/migrations/20260709_production_core.sql
+```
+
+Apply it in Supabase SQL Editor or with the Supabase CLI. The migration creates profile, preferences, onboarding, organization, membership, Stripe customer, follows, interactions, and Stripe event tables with RLS enabled.
+
+## Run Locally
+
+For local SQLite fallback:
+
+```sh
+npm run migrate
+npm start
+```
+
+Then open `http://127.0.0.1:4173/`.
+
+Core flows:
+
+- Create account: `login.html`
+- Dashboard: `dashboard.html`
+- Profile: `profile.html`
+- Logout: dashboard sidebar
+- Export personal data or delete account: dashboard profile dialog
+
+## Production
+
+Vercel routes all requests through `api/index.js`, which forwards to the existing Node app. This preserves protected-route redirects, API auth checks, security headers, and static-file blocking.
+
+Build gate:
+
+```sh
+npm run build
+```
 
 ## Tests
 
 ```sh
-npm test             # node --test server/*.test.js
+npm test
 ```
+
+The tests cover recommendation behavior, auth/session flow, profile persistence, privacy export/deletion, private-route protection, Stripe checkout/webhooks, runtime config validation, Vercel routing config, and Supabase migration safety checks.
+
+## Stripe
+
+The browser never receives `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET`. `/api/checkout` creates Checkout Sessions server-side, and `/api/stripe/webhook` accepts subscription state only after Stripe signature verification. Do not store card data in Supabase; the schema stores only Stripe IDs and subscription metadata.
+
+## LinkedIn
+
+LinkedIn OAuth is prepared through environment placeholders. Configure the provider in Supabase Auth, using `LINKEDIN_CLIENT_ID` and server-only `LINKEDIN_CLIENT_SECRET`; do not hardcode either value in frontend files.

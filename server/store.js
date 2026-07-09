@@ -60,14 +60,14 @@ export function createStore(seed = seedData()) {
   return store;
 }
 
-const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+const edgeKey = (a, b) => `${a}->${b}`;
 
 const MAX_EVENTS_PER_PAIR = 50;   // older events are ~fully decayed anyway
 
 export function recordInteraction(store, from, to, type, at = Date.now()) {
   const w = ENGAGEMENT_WEIGHT[type];
   if (w === undefined) throw new Error(`unknown interaction type: ${type}`);
-  const k = pairKey(from, to);
+  const k = edgeKey(from, to);
   const events = store.engagement.get(k) ?? [];
   events.push({ w, at });
   if (events.length > MAX_EVENTS_PER_PAIR) events.splice(0, events.length - MAX_EVENTS_PER_PAIR);
@@ -76,7 +76,7 @@ export function recordInteraction(store, from, to, type, at = Date.now()) {
 
 /* recency-weighted engagement: each event decays exponentially from `at` */
 export function getEngagement(store, a, b, now = Date.now()) {
-  const events = store.engagement.get(pairKey(a, b));
+  const events = store.engagement.get(edgeKey(a, b));
   if (!events) return 0;
   let total = 0;
   for (const { w, at } of events) total += w * 2 ** (-(now - at) / HALF_LIFE_MS);

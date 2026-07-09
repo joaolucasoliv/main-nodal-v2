@@ -6,9 +6,9 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta name="description" content="Preview of the NODAL member dashboard: a dynamic profile built as a role stack of practitioner, mentor, connector and more, all in one node." />
+  <meta name="description" content="NODAL member dashboard: profile, community paths, learning, recognition and civic participation." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cline x1='20' y1='22' x2='44' y2='42' stroke='%2359bc53' stroke-width='5'/%3E%3Ccircle cx='20' cy='22' r='11' fill='%233d5c38'/%3E%3Ccircle cx='44' cy='42' r='8' fill='%2359bc53'/%3E%3C/svg%3E" />
-  <title>NODAL · Your dashboard</title>
+  <title>NODAL · Community dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet" />
@@ -31,10 +31,10 @@
         Dashboard</a>
       <a class="side-link" href="#growth">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
-        Growth path</a>
+        Community paths</a>
       <a class="side-link" href="#badges">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 21l5-2.6L17 21l-1.5-7.5"/></svg>
-        Badges</a>
+        Recognition</a>
       <a class="side-link" href="#assessment">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="18" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg>
         Self-assessment</a>
@@ -51,10 +51,10 @@
         Public profile</a>
       <a class="side-link" href="payments.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
-        Membership</a>
+        Supporting membership</a>
     </nav>
 
-    <a class="side-out" href="index.html">
+    <a class="side-out" href="login.html" id="logoutBtn">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9M15 8l4 4-4 4M19 12H9"/></svg>
       Log out</a>
   </aside>
@@ -65,7 +65,7 @@
     <header class="topbar">
       <div class="search" role="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-        <input type="search" id="searchInput" placeholder="Search the network…" aria-label="Search the network" autocomplete="off" />
+        <input type="search" id="searchInput" placeholder="Search the community…" aria-label="Search the community" autocomplete="off" />
         <span class="search-in">In:</span>
         <div class="search-chips" id="searchChips">
           <button type="button" class="chip is-on">People</button>
@@ -92,9 +92,8 @@
     <section class="block" id="overview">
       <div class="greet">
         <div>
-          <h1><span id="greetWord">Good morning</span>, <span id="userName">Camila</span>.</h1>
-          <p id="greetSub">Your node is active in <strong>3 spaces</strong> this week: 2 new matches,
-            one mentorship session today, and your Ambassador path is 4 of 6 months in.</p>
+          <h1><span id="greetWord">Good morning</span>, <span id="userName">Member</span>.</h1>
+          <p id="greetSub">Your node is loading from your account.</p>
         </div>
       </div>
 
@@ -102,14 +101,14 @@
 
         <!-- role stack -->
         <article class="card card-roles">
-          <h2>Role stack</h2>
-          <p class="card-hint">One node, several roles at once. Roles grow, they don't replace each other.</p>
+          <h2>Community roles</h2>
+          <p class="card-hint">One person can learn, mentor, connect and contribute at the same time.</p>
           <ul class="rolelist" id="roleList">
             <li><span class="role-pill r-validated">Community Member</span><span class="role-scope">since 2025</span></li>
             <li><span class="role-pill r-validated">Skilled Practitioner</span><span class="role-scope">Public space</span></li>
             <li><span class="role-pill r-validated">Mentor</span><span class="role-scope">Participatory processes</span></li>
-            <li><span class="role-pill r-validated">Local Connector</span><span class="role-scope">Lima</span></li>
-            <li><span class="role-pill r-path">Ambassador</span><span class="role-scope">in progress · 4/6 months</span></li>
+            <li><span class="role-pill r-validated">Local Connector</span><span class="role-scope">your city</span></li>
+            <li><span class="role-pill r-path">Community Host</span><span class="role-scope">in progress · 4/6 months</span></li>
           </ul>
           <div class="rolemix" id="roleMix" aria-label="Activity mix this quarter: practice 45%, mentoring 30%, connecting 25%">
             <span class="mix mix-a"></span><span class="mix mix-b"></span><span class="mix mix-c"></span>
@@ -128,12 +127,12 @@
         <article class="card card-contrib">
           <h2>Contributions</h2>
           <div class="stat-row">
-            <div class="stat"><span class="stat-n">14</span><span class="stat-l">actions<br/>this quarter</span></div>
-            <div class="stat"><span class="stat-n">5</span><span class="stat-l">resources<br/>shared</span></div>
-            <div class="stat"><span class="stat-n">6<em>mo</em></span><span class="stat-l">active<br/>streak</span></div>
+            <div class="stat"><span class="stat-n">0</span><span class="stat-l">actions<br/>this quarter</span></div>
+            <div class="stat"><span class="stat-n">0</span><span class="stat-l">resources<br/>shared</span></div>
+            <div class="stat"><span class="stat-n">0<em>mo</em></span><span class="stat-l">active<br/>streak</span></div>
           </div>
           <div class="spark-frame">
-            <svg class="spark" viewBox="0 0 280 84" preserveAspectRatio="none" aria-label="Contribution trend, six months, rising">
+            <svg class="spark" viewBox="0 0 280 84" preserveAspectRatio="none" aria-label="No contribution trend yet">
               <path d="M0 70 C 28 64, 42 58, 64 60 S 104 44, 128 46 S 176 30, 204 26 S 252 18, 280 12 L 280 84 L 0 84 Z" fill="#addea8" opacity=".45"/>
               <path d="M0 70 C 28 64, 42 58, 64 60 S 104 44, 128 46 S 176 30, 204 26 S 252 18, 280 12" fill="none" stroke="#3d5c38" stroke-width="2.5" stroke-linecap="round"/>
               <circle cx="204" cy="26" r="4.5" fill="#59bc53" stroke="#fff" stroke-width="2"/>
@@ -144,8 +143,8 @@
 
         <!-- trust ladder -->
         <article class="card card-trust">
-          <h2>Trust ladder</h2>
-          <p class="card-hint">Levels belong to topics and skills, never to the whole person.</p>
+          <h2>Trust & learning</h2>
+          <p class="card-hint">Levels describe topics and skills, never the whole person.</p>
           <ul class="trustlist" id="trustList">
             <li>
               <span class="t-name">Public space</span>
@@ -173,9 +172,8 @@
             <div class="stat"><span class="stat-n" id="mentorHours">03:45<em>h</em></span><span class="stat-l">this<br/>month</span></div>
             <div class="stat"><span class="stat-n" id="mentorMentees">2</span><span class="stat-l">active<br/>mentees</span></div>
           </div>
-          <p class="dark-note" id="mentorNote">You mentor in <strong>participatory processes</strong>, and you're a mentee
-            in <strong>urban data</strong>. That asymmetry is the point.</p>
-          <a class="pill-btn" href="#growth" id="mentorCta">Next session · Thu 18:00</a>
+          <p class="dark-note" id="mentorNote">Mentoring status loads from your profile.</p>
+          <a class="pill-btn" href="#growth" id="mentorCta">Review community paths</a>
         </article>
       </div>
     </section>
@@ -183,8 +181,8 @@
     <!-- ============ growth paths ============ -->
     <section class="block" id="growth">
       <div class="block-head">
-        <h2 class="block-title">Growth paths</h2>
-        <p class="block-sub">Four branches from one trunk. Hold positions on several at once.</p>
+        <h2 class="block-title">Community paths</h2>
+        <p class="block-sub">Ways to learn, share, mentor, connect locally and take part in civic action.</p>
       </div>
 
       <div class="growth-grid">
@@ -192,21 +190,21 @@
           <li>
             <button type="button" class="path-row is-on" data-branch="knowledge">
               <span class="path-ico p-a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5z"/><path d="M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5"/></svg></span>
-              <span class="path-meta"><strong>Knowledge</strong><em>Mentor → Instructor / Facilitator</em></span>
+              <span class="path-meta"><strong>Knowledge</strong><em>Mentor → Facilitator</em></span>
               <span class="path-state st-active">Active role</span>
             </button>
           </li>
           <li>
             <button type="button" class="path-row" data-branch="project">
               <span class="path-ico p-b"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>
-              <span class="path-meta"><strong>Project</strong><em>Practitioner → Project Expert</em></span>
+              <span class="path-meta"><strong>Practice</strong><em>Practitioner → Project contributor</em></span>
               <span class="path-state st-next" id="projectState">2 steps left</span>
             </button>
           </li>
           <li>
             <button type="button" class="path-row" data-branch="territory">
               <span class="path-ico p-c"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.4-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.6-6.5 10-6.5 10z"/><circle cx="12" cy="11" r="2.3"/></svg></span>
-              <span class="path-meta"><strong>Territory</strong><em>Local Connector → Ambassador / Fellow</em></span>
+              <span class="path-meta"><strong>Territory</strong><em>Local Connector → Community host</em></span>
               <span class="path-state st-progress">4 / 6 months</span>
             </button>
           </li>
@@ -221,7 +219,7 @@
 
         <article class="path-detail" id="pathDetail" aria-live="polite">
           <p class="pd-kicker" id="pdKicker">Knowledge branch</p>
-          <h3 id="pdTitle">Mentor → Instructor / Facilitator</h3>
+          <h3 id="pdTitle">Mentor → Facilitator</h3>
           <p class="pd-now" id="pdNow">You hold: Mentor (Participatory processes)</p>
           <ul class="pd-criteria" id="pdCriteria"></ul>
           <p class="pd-unlock"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0"/></svg><span id="pdUnlock"></span></p>
@@ -233,8 +231,8 @@
     <!-- ============ badges ============ -->
     <section class="block" id="badges">
       <div class="block-head">
-        <h2 class="block-title">Badges &amp; recognition</h2>
-        <p class="block-sub">Every badge unlocks something: visibility, programs, paid work. Never decoration.</p>
+        <h2 class="block-title">Recognition</h2>
+        <p class="block-sub">Recognition should point to contribution, learning and trust, not decoration.</p>
       </div>
       <div class="badge-grid" id="badgeGrid"></div>
     </section>
@@ -243,7 +241,7 @@
     <section class="block" id="assessment">
       <div class="block-head">
         <h2 class="block-title">Where are you today?</h2>
-        <p class="block-sub">Re-rate yourself anytime. Your trust ladder, suggested track and open paths update with you.</p>
+        <p class="block-sub">Re-rate yourself anytime. Your learning profile and suggested paths update with you.</p>
       </div>
 
       <div class="assess-grid">
@@ -266,12 +264,12 @@
         </article>
 
         <article class="card card-track" aria-live="polite">
-          <h2>Suggested track</h2>
+          <h2>Suggested path</h2>
           <p class="track-name" id="trackName">Leader / Mentor potential</p>
           <p class="track-why" id="trackWhy">Level 3+ in a topic, transmission experience, and you offer mentoring.</p>
           <div class="fasttrack" id="fastTrack">
             <p><strong>Mentor fast-track open.</strong> Light evidence review → 20-minute
-              validation call → one trial session → Mentor badge.</p>
+              validation call → one trial session → mentor recognition.</p>
             <button type="button" class="btn-green" id="fastTrackBtn">Start mentor application</button>
           </div>
         </article>
@@ -294,10 +292,10 @@
         <ul class="parts">
           <li class="done">Part A · Core</li>
           <li class="done">Part B · Self-assessment</li>
-          <li id="partCStatus">Part C · Depth · 3 of 5</li>
+          <li id="partCStatus">Part C · Community profile · 3 of 5</li>
         </ul>
       </div>
-      <p class="rail-note" id="partCNote">Completing Part C unlocks <strong>Project Expert</strong> validation.</p>
+      <p class="rail-note" id="partCNote">Completing Part C opens deeper community validation.</p>
       <button type="button" class="btn-dark btn-wide" id="partCBtn">Complete Part C</button>
     </article>
 
@@ -306,24 +304,24 @@
       <ol class="week" id="weekStrip" aria-label="This week"></ol>
       <ol class="tline" id="tline">
         <li class="tl-strong">
-          <span class="tl-time">Thu · 18:00</span>
-          <p class="tl-name">Mentorship session · Roberto</p>
-          <p class="tl-sub">Participatory processes · video call</p>
+          <span class="tl-time">Today</span>
+          <p class="tl-name">Profile activity</p>
+          <p class="tl-sub">Loading from your account</p>
         </li>
         <li>
-          <span class="tl-time">Fri · 10:00</span>
-          <p class="tl-name">Course module · Urban data basics</p>
-          <p class="tl-sub">You're the mentee here · module 3 of 8</p>
+          <span class="tl-time">Next</span>
+          <p class="tl-name">Complete self-assessment</p>
+          <p class="tl-sub">Opens suggested path</p>
         </li>
         <li>
-          <span class="tl-time">Sat · 11:30</span>
-          <p class="tl-name">Knowledge circle · Lima chapter</p>
-          <p class="tl-sub">Local Connector · 12 confirmed</p>
+          <span class="tl-time">Suggested</span>
+          <p class="tl-name">Browse your topic feed</p>
+          <p class="tl-sub">Courses and open calls</p>
         </li>
         <li class="tl-soft">
           <span class="tl-time">Pending</span>
-          <p class="tl-name">Endorsement request · facilitation</p>
-          <p class="tl-sub">From Inés D. after the Callao audit</p>
+          <p class="tl-name">First contribution</p>
+          <p class="tl-sub">Appears after your first action</p>
         </li>
         <li class="tl-extra" hidden>
           <span class="tl-time">Last week</span>
@@ -332,13 +330,13 @@
         </li>
         <li class="tl-extra" hidden>
           <span class="tl-time">Last week</span>
-          <p class="tl-name">Introduction made · Sofía ↔ Inés</p>
+          <p class="tl-name">Introduction made</p>
           <p class="tl-sub">Connector badge · 3 of 5</p>
         </li>
         <li class="tl-extra tl-soft" hidden>
           <span class="tl-time">May 28</span>
-          <p class="tl-name">Mentorship session · Ana</p>
-          <p class="tl-sub">Feedback received · counts toward Instructor</p>
+          <p class="tl-name">Mentorship session</p>
+          <p class="tl-sub">Feedback received · counts toward facilitation</p>
         </li>
       </ol>
       <button type="button" class="btn-dark btn-wide" id="tlMore" aria-expanded="false">View all activity</button>
@@ -350,29 +348,31 @@
 <dialog class="partc" id="userDialog" aria-label="Choose who you are">
   <form id="userForm" method="dialog" novalidate>
     <p class="pd-kicker">NODAL · Member preview</p>
-    <h3 id="ucTitle">Who's exploring today?</h3>
-    <p class="partc-sub" id="ucSub">Create a profile to see the dashboard as a brand-new member,
+    <h3 id="ucTitle">Who is joining today?</h3>
+    <p class="partc-sub" id="ucSub">Create a profile to see the community dashboard as a brand-new member,
       or jump in as a generated one.</p>
     <label>Your name
       <input type="text" id="ucName" maxlength="40" placeholder="Ana Pereira" />
     </label>
     <div class="uc-row">
       <label>City
-        <select id="ucCity"></select>
+        <input type="text" id="ucCity" list="ucCityOptions" maxlength="60" autocomplete="address-level2" placeholder="Reykjavík" />
+        <datalist id="ucCityOptions"></datalist>
       </label>
       <label>Current role
-        <select id="ucRole"></select>
+        <input type="text" id="ucRole" maxlength="80" autocomplete="organization-title" placeholder="Civil Engineer" />
       </label>
     </div>
     <p class="uc-label">Topics of interest · pick up to 3</p>
     <div class="uc-topics" id="ucTopics"></div>
     <p class="pc-error" id="ucError" hidden></p>
+    <div class="uc-data-controls" id="ucDataControls" hidden>
+      <button type="button" class="pc-cancel" id="ucExport">Export my data</button>
+      <button type="button" class="pc-cancel danger" id="ucDelete">Delete account</button>
+    </div>
     <div class="partc-actions">
-      <button type="button" class="pc-cancel" id="ucRandom">Random member</button>
-      <button type="button" class="pc-cancel" id="ucDemo">Camila · demo</button>
       <button type="submit" class="btn-dark" id="ucSubmit">Create profile</button>
     </div>
-    <button type="button" class="uc-reset" id="ucReset">Reset all preview data</button>
   </form>
 </dialog>
 
@@ -381,7 +381,7 @@
   <form id="partCForm" method="dialog" novalidate>
     <p class="pd-kicker">Onboarding · Part C · Depth</p>
     <h3>Complete your profile</h3>
-    <p class="partc-sub">Five short fields. They unlock Mentor and Project Expert validation — and better matches.</p>
+    <p class="partc-sub">Five short fields. They support mentor validation, community trust and more useful connections.</p>
     <label>Short bio
       <textarea id="pcBio" rows="3" maxlength="400"></textarea>
     </label>
@@ -414,6 +414,6 @@
   </form>
 </dialog>
 
-<script src="dashboard.js?v=7"></script>
+<script src="dashboard.js?v=13"></script>
 </body>
 </html>

@@ -23,7 +23,18 @@ const COMPLEMENTS = [
   ['architect', 'community'], ['engineer', 'community'],
 ];
 
-export const cityScore = (a, b) => (a.city === b.city ? 1 : 0);
+const normalizeText = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .replace(/\s+/g, ' ')
+  .toLowerCase();
+
+export const cityScore = (a, b) => {
+  const ca = normalizeText(a.city);
+  const cb = normalizeText(b.city);
+  return ca && ca === cb ? 1 : 0;
+};
 
 export function complementScore(a, b) {
   const ra = a.role.toLowerCase(), rb = b.role.toLowerCase();
@@ -160,7 +171,7 @@ export function recommend(store, userId, { limit = 6 } = {}) {
       reasons: {
         sharedInterests: shared,
         mutualConnections: mutuals,
-        sameCity: user.city === me.city,
+        sameCity: cityScore(user, me) === 1,
         complementaryRole: complementScore(me, user) ? user.role : null,
         hasLinkedin: Boolean(user.linkedin),
       },

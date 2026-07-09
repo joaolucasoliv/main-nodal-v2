@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "npm test",
+  "devCommand": "npm start",
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs22.x",
+      "includeFiles": [
+        "server/**",
+        "*.html",
+        "*.css",
+        "*.js"
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/api/index.js"
+    }
+  ]
+}

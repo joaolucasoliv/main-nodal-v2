@@ -10,6 +10,23 @@
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
 
+  async function loadLandingBillingConfig() {
+    const price = document.querySelector('[data-billing-price]');
+    if (!price) return;
+    try {
+      const res = await fetch('/api/billing/config', { headers: { Accept: 'application/json' } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const monthly = data.cycles?.monthly;
+      if (!monthly?.amount) return;
+      price.textContent = `${monthly.amount}${monthly.per ? ` ${monthly.per}` : ''}`;
+    } catch {
+      // Static previews keep the neutral fallback copy.
+    }
+  }
+
+  loadLandingBillingConfig();
+
   /* ---------- section tabs ---------- */
   const tabs = [...document.querySelectorAll('.plat-tab')];
   const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')));

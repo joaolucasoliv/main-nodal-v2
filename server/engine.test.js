@@ -69,6 +69,7 @@ test('WEIGHTS sum to 1', () => {
 
 test('cityScore: 1 for same city, 0 otherwise', () => {
   assert.equal(cityScore({ city: 'Lima' }, { city: 'Lima' }), 1);
+  assert.equal(cityScore({ city: 'Mococa, São Paulo, Brazil' }, { city: 'mococa, sao paulo, brazil' }), 1);
   assert.equal(cityScore({ city: 'Lima' }, { city: 'CDMX' }), 0);
 });
 
