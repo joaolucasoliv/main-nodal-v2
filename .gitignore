@@ -26,3 +26,25 @@ docs/nodal-member-journey/
 .env.*
 !.env.example
 *.local
+
+# Supabase local CLI state
+supabase/.temp/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+!.env.example
+
+# Supabase local CLI state
+supabase/.temp/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+!.env.example

@@ -4,12 +4,17 @@
   "version": "1.0.0",
   "description": "NODAL web app with authentication, persistence and recommendation API",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "npm test",
     "migrate": "node server/migrate.js",
     "seed:dev": "node server/seed-dev.js",
     "start": "node server/server.js",
     "test": "node --test server/*.test.js"
+  },
+  "devDependencies": {
+    "supabase": "^2.109.1"
   }
 }
