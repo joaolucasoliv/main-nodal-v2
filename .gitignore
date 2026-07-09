@@ -48,3 +48,4 @@ supabase/.temp/
 .env.development
 .env.*.local
 !.env.example
+supabase/.temp/
