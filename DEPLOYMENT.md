@@ -98,14 +98,15 @@ npm start
 1. Confirm `.env`, `.env.local`, `.env.production`, `.vercel/`, and `data/` are not committed.
 2. Apply the Supabase migration.
 3. Configure Vercel environment variables.
-4. Connect the Git repository to Vercel.
-5. Keep Framework Preset as Other or use the committed `vercel.json`.
-6. Deploy.
-7. Visit `/api/health`.
-8. Create a test account.
-9. Confirm `/dashboard.html` redirects unauthenticated users to `/login.html`.
-10. Confirm profile edits persist after refresh.
-11. Confirm Stripe checkout returns `payments not configured` while `PAYMENTS_MODE=preview`.
+4. Run `npm ci` and `npm run build`; verify generated `public/` assets exist and no source PNG files are copied there.
+5. Connect the Git repository to Vercel.
+6. Keep Framework Preset as Other or use the committed `vercel.json`.
+7. Deploy. Vercel serves generated `public/` assets directly and routes HTML/API requests through `api/index.js`.
+8. Visit `/api/health`.
+9. Create a test account.
+10. Confirm `/dashboard.html` redirects unauthenticated users to `/login.html`.
+11. Confirm profile edits persist after refresh.
+12. Confirm Stripe checkout returns `payments not configured` while `PAYMENTS_MODE=preview`.
 
 ## Security Checklist
 
