@@ -601,7 +601,16 @@ export function createApp({
         if (fullName.length < 2) { send(res, 400, { error: 'full name is required' }); return; }
         if (!validateEmail(email)) { send(res, 400, { error: 'valid email is required' }); return; }
         if (!validatePassword(password)) { send(res, 400, { error: 'password must be at least 8 characters' }); return; }
-        const result = await repository.signup({ fullName, email, password, env: process.env });
+        let result;
+        try {
+          result = await repository.signup({ fullName, email, password, env: process.env });
+        } catch (err) {
+          if (err?.status === 429) {
+            send(res, 429, { error: 'Confirmation email is temporarily unavailable. Please try again later.' });
+            return;
+          }
+          throw err;
+        }
         if (result.error) { send(res, result.status, { error: result.error }); return; }
         send(res, result.status, {
           user: result.user,

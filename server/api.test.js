@@ -667,6 +667,27 @@ test('auth: signup creates a user session and duplicate email is rejected', asyn
   assert.equal((await dupe.json()).error, 'signup could not be completed');
 });
 
+test('auth: signup hides provider rate-limit details behind a useful retry message', async (t) => {
+  const repository = {
+    async resolveSession() { return { user: null, cookies: [] }; },
+    async signup() {
+      throw Object.assign(new Error('email rate limit exceeded'), { status: 429 });
+    },
+    close() {},
+  };
+  const base = await bootApp(t, createApp({ repository }));
+  const response = await postJson(base, '/api/auth/signup', {
+    fullName: 'Rate Limited Member',
+    email: 'member@example.com',
+    password: 'correct-horse',
+  });
+
+  assert.equal(response.status, 429);
+  const body = await response.json();
+  assert.equal(body.error, 'Confirmation email is temporarily unavailable. Please try again later.');
+  assert.doesNotMatch(body.error, /rate limit/i);
+});
+
 test('auth: repeated login attempts are rate limited before password work', async (t) => {
   const base = await bootDb(t);
   let last;
