@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabase, createUser, getUserByEmail, updateUserProfile, addFollowDb, recordInteractionDb } from './db.js';
-import { hashPassword } from './auth.js';
-import { seedData } from './store.js';
+import { createDatabase, createUser, getUserByEmail, updateUserProfile, addFollowDb, recordInteractionDb } from '../server/db.js';
+import { hashPassword } from '../server/auth.js';
+import { seedData } from '../server/store.js';
 
 const db = createDatabase();
 

@@ -8,11 +8,13 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 test('Vercel serves generated frontend assets before the Node serverless adapter', () => {
   const vercel = JSON.parse(readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
   const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  const staticBuild = readFileSync(path.join(ROOT, 'server', 'build-static.js'), 'utf8');
+  const staticBuild = readFileSync(path.join(ROOT, 'scripts', 'build-static.js'), 'utf8');
   assert.equal(vercel.framework, null);
   assert.equal(vercel.outputDirectory, 'public');
   assert.ok(readdirSync(path.join(ROOT, vercel.outputDirectory)).length > 0);
-  assert.match(packageJson.scripts.build, /server\/build-static\.js/);
+  assert.match(packageJson.scripts.build, /scripts\/build-static\.js/);
+  assert.match(packageJson.scripts.migrate, /scripts\/migrate\.js/);
+  assert.match(packageJson.scripts['seed:dev'], /scripts\/seed-dev\.js/);
   assert.match(staticBuild, /assets/);
   assert.match(staticBuild, /styles\.css/);
   assert.match(staticBuild, /dashboard\.js/);
