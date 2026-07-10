@@ -13,6 +13,7 @@ test('Vercel routes all requests through the Node serverless adapter', () => {
   assert.ok(!('runtime' in vercel.functions['api/index.js']), 'Node runtime should be configured through package.json engines, not functions.runtime');
   assert.equal(typeof vercel.functions['api/index.js'].includeFiles, 'string');
   assert.ok(vercel.functions['api/index.js'].includeFiles.includes('server/**'));
+  assert.ok(vercel.rewrites.some((route) => route.source === '/' && route.destination === '/api/index.js'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/:path*' && route.destination === '/api/index.js'));
 });
 
