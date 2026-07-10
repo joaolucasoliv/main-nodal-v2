@@ -227,12 +227,16 @@ test('authenticated checkout sends user metadata and customer email to Stripe', 
   assert.equal(form.get('customer_email'), 'paying@example.com');
 });
 
-test('configured checkout fails closed without PUBLIC_BASE_URL', async (t) => {
+test('configured checkout fails closed without a public application URL', async (t) => {
   const oldBaseUrl = process.env.PUBLIC_BASE_URL;
+  const oldAppUrl = process.env.NEXT_PUBLIC_APP_URL;
   delete process.env.PUBLIC_BASE_URL;
+  delete process.env.NEXT_PUBLIC_APP_URL;
   t.after(() => {
     if (oldBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = oldBaseUrl;
+    if (oldAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = oldAppUrl;
   });
   let called = false;
   const payments = {

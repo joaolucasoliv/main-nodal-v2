@@ -8,6 +8,8 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 test('Vercel routes all requests through the Node serverless adapter', () => {
   const vercel = JSON.parse(readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
   assert.equal(vercel.framework, null);
+  assert.equal(vercel.outputDirectory, 'public');
+  assert.ok(readdirSync(path.join(ROOT, vercel.outputDirectory)).length > 0);
   assert.ok(!('runtime' in vercel.functions['api/index.js']), 'Node runtime should be configured through package.json engines, not functions.runtime');
   assert.equal(typeof vercel.functions['api/index.js'].includeFiles, 'string');
   assert.ok(vercel.functions['api/index.js'].includeFiles.includes('server/**'));
@@ -72,6 +74,32 @@ test('Supabase migration creates required tables with RLS policies and indexes',
   assert.match(sql, /on conflict\s*\(user_id\)\s*do update/i);
 
   assert.doesNotMatch(sql, /credit_card|card_number|cvc|stripe_secret/i);
+});
+
+test('Supabase advisor hardening keeps public data invoker-scoped and server ledgers private', () => {
+  const dir = path.join(ROOT, 'supabase', 'migrations');
+  const sql = readdirSync(dir)
+    .sort()
+    .map((name) => readFileSync(path.join(dir, name), 'utf8'))
+    .join('\n');
+
+  assert.match(sql, /create or replace view public\.public_profiles\s+with\s*\(security_invoker\s*=\s*true\)/i);
+  assert.match(sql, /alter function public\.set_updated_at\(\)\s+set search_path\s*=\s*public,\s*pg_temp/i);
+  assert.match(sql, /create policy "stripe_events_deny_client"/i);
+  assert.match(sql, /on public\.stripe_events\s+for all\s+to anon, authenticated\s+using \(false\)\s+with check \(false\)/i);
+  assert.match(sql, /create index if not exists member_follows_target_user_id_idx\s+on public\.member_follows\s*\(target_user_id\)/i);
+  for (const policy of [
+    'profiles_select_own',
+    'profile_preferences_select_own',
+    'onboarding_responses_select_own',
+    'organization_memberships_select_own',
+    'organizations_select_member',
+    'stripe_customers_select_own',
+    'member_follows_select_participant',
+    'member_interactions_select_own',
+  ]) {
+    assert.match(sql, new RegExp(`create policy "${policy}"[\\s\\S]*?\\(select auth\\.uid\\(\\)\\)`,'i'));
+  }
 });
 
 test('CI uses immutable action revisions and supports pre-main validation refs', () => {
