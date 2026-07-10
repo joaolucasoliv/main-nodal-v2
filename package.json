@@ -8,7 +8,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "build": "npm test",
+    "build": "npm test && node server/build-static.js",
     "migrate": "node server/migrate.js",
     "seed:dev": "node server/seed-dev.js",
     "start": "node server/server.js",

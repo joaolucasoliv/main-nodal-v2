@@ -5,17 +5,25 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-test('Vercel routes all requests through the Node serverless adapter', () => {
+test('Vercel serves generated frontend assets before the Node serverless adapter', () => {
   const vercel = JSON.parse(readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const staticBuild = readFileSync(path.join(ROOT, 'server', 'build-static.js'), 'utf8');
   assert.equal(vercel.framework, null);
   assert.equal(vercel.outputDirectory, 'public');
   assert.ok(readdirSync(path.join(ROOT, vercel.outputDirectory)).length > 0);
+  assert.match(packageJson.scripts.build, /server\/build-static\.js/);
+  assert.match(staticBuild, /assets/);
+  assert.match(staticBuild, /styles\.css/);
+  assert.match(staticBuild, /dashboard\.js/);
   assert.ok(!('runtime' in vercel.functions['api/index.js']), 'Node runtime should be configured through package.json engines, not functions.runtime');
   assert.equal(typeof vercel.functions['api/index.js'].includeFiles, 'string');
   assert.ok(vercel.functions['api/index.js'].includeFiles.includes('server/**'));
-  assert.ok(vercel.functions['api/index.js'].includeFiles.includes('assets/**'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/' && route.destination === '/api/index.js'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/:path*' && route.destination === '/api/index.js'));
+  assert.ok(vercel.headers.some((route) => route.source === '/assets/(.*)'));
+  assert.ok(vercel.headers.some((route) => route.source.endsWith('.js')));
+  assert.ok(vercel.headers.some((route) => route.source.endsWith('.css')));
 });
 
 test('Supabase migration creates required tables with RLS policies and indexes', () => {

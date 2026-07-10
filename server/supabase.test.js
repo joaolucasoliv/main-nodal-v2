@@ -254,7 +254,7 @@ test('Supabase env rejects secret-looking keys in public config', () => {
   }), /public Supabase key must not be a secret key/);
 });
 
-test('Supabase session initialization never overwrites an existing profile or preferences', async () => {
+test('Supabase session reads an existing profile without initialization writes', async () => {
   const state = profileState();
   const calls = [];
   const repo = createSupabaseRepository({
@@ -270,10 +270,28 @@ test('Supabase session initialization never overwrites an existing profile or pr
   assert.equal(resolved.user.partC.consent, true);
   const initializationWrites = calls.filter(({ options }) => options.method === 'POST')
     .filter(({ url }) => ['/rest/v1/profiles', '/rest/v1/profile_preferences'].includes(url.pathname));
+  assert.equal(initializationWrites.length, 0);
+});
+
+test('Supabase session repairs missing preferences without overwriting profile data', async () => {
+  const state = profileState();
+  state.preferences = null;
+  const calls = [];
+  const repo = createSupabaseRepository({
+    env: testEnv(),
+    fetchImpl: statefulFetch(state, calls),
+  });
+
+  const resolved = await repo.resolveSession({
+    headers: { cookie: 'nodal_session=valid-access' },
+  });
+
+  assert.equal(resolved.user.title, 'Urban Researcher');
+  const initializationWrites = calls.filter(({ options }) => options.method === 'POST')
+    .filter(({ url }) => ['/rest/v1/profiles', '/rest/v1/profile_preferences'].includes(url.pathname));
   assert.equal(initializationWrites.length, 2);
   for (const call of initializationWrites) {
     assert.match(call.options.headers.Prefer, /resolution=ignore-duplicates/);
-    assert.doesNotMatch(call.options.headers.Prefer, /merge-duplicates/);
   }
 });
 

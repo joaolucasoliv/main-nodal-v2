@@ -39,6 +39,7 @@ const CITY_SEARCH_CACHE_MS = 24 * 60 * 60 * 1000;
 const CITY_SEARCH_MIN_INTERVAL_MS = envInt('CITY_SEARCH_MIN_INTERVAL_MS', 1000);
 const CITY_SEARCH_BASE_URL = process.env.CITY_SEARCH_URL || 'https://geodb-free-service.wirefreethought.com/v1/geo/cities';
 const CITY_SEARCH_ATTRIBUTION = 'GeoDB Cities';
+const STATIC_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
 const CITY_ADDRESS_KEYS = ['city', 'town', 'village', 'municipality', 'hamlet', 'county', 'city_district'];
 const BASE_CSP = [
   "default-src 'self'",
@@ -521,7 +522,7 @@ async function serveStatic(req, res, pathname) {
     res.writeHead(200, {
       ...headers,
       'Content-Type': type,
-      ...(type.startsWith('text/html') ? { 'Cache-Control': 'no-store' } : {}),
+      'Cache-Control': type.startsWith('text/html') ? 'no-store' : STATIC_CACHE_CONTROL,
     });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
@@ -548,7 +549,13 @@ export function createApp({
       const url = new URL(req.url, 'http://127.0.0.1');
       const { pathname } = url;
       const canonical = canonicalPathname(pathname);
-      const session = useDb ? await repository.resolveSession(req) : { user: null, cookies: [] };
+      const isApiRequest = pathname.startsWith('/api/');
+      const pageNeedsSession = !isApiRequest
+        && canonical
+        && (PRIVATE_PAGES.has(canonical) || canonical === '/login.html');
+      const session = useDb && (isApiRequest || pageNeedsSession)
+        ? await repository.resolveSession(req)
+        : { user: null, cookies: [] };
       const sessionUser = session.user;
       if (session.cookies?.length) res.setHeader('Set-Cookie', session.cookies);
 

@@ -3,13 +3,39 @@
   "framework": null,
   "outputDirectory": "public",
   "installCommand": "npm ci",
-  "buildCommand": "npm test",
+  "buildCommand": "npm run build",
   "devCommand": "npm start",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{server/**,assets/**,*.html,*.css,*.js}"
+      "includeFiles": "{server/**,*.html}"
     }
   },
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(app|auth|dashboard|i18n|nav|payments|profile|recs|script).js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(styles|dashboard).css",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/",

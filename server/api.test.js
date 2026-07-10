@@ -1108,3 +1108,29 @@ test('static serving: pages resolve, traversal does not', async (t) => {
   assert.equal((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status, 404);
   assert.equal((await fetch(`${base}/package.json/../server/server.js`)).status, 404);
 });
+
+test('static assets bypass session resolution and carry reusable cache headers', async (t) => {
+  let sessionResolutions = 0;
+  const repository = {
+    async resolveSession() {
+      sessionResolutions += 1;
+      return { user: null, cookies: [] };
+    },
+    close() {},
+  };
+  const base = await bootApp(t, createApp({ repository }));
+
+  const asset = await fetch(`${base}/styles.css`, {
+    headers: { Cookie: 'nodal_session=existing-session' },
+  });
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers.get('cache-control'), /max-age=3600/);
+  assert.equal(sessionResolutions, 0);
+
+  const privatePage = await fetch(`${base}/dashboard.html`, {
+    headers: { Cookie: 'nodal_session=existing-session' },
+    redirect: 'manual',
+  });
+  assert.equal(privatePage.status, 302);
+  assert.equal(sessionResolutions, 1);
+});

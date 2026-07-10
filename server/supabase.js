@@ -280,6 +280,14 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
     return toApiUserFromSupabase(await bundleForUser(userId));
   }
 
+  async function existingOrEnsureProfile(authUser) {
+    const userId = authUser?.id;
+    if (!userId) throw Object.assign(new Error('Supabase auth did not return a user'), { status: 502 });
+    const bundle = await bundleForUser(userId);
+    if (bundle.profile && bundle.preferences) return toApiUserFromSupabase(bundle);
+    return ensureProfile(authUser);
+  }
+
   async function ensureProfile(authUser, fallbackName = '') {
     const userId = authUser?.id;
     if (!userId) throw Object.assign(new Error('Supabase auth did not return a user'), { status: 502 });
@@ -393,7 +401,7 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
         try {
           const authUser = await authUserFromToken(accessToken);
           if (!authUser?.id) return { user: null, cookies: clearSessionCookies(env) };
-          return { user: await ensureProfile(authUser), cookies: [] };
+          return { user: await existingOrEnsureProfile(authUser), cookies: [] };
         } catch (err) {
           if (!refreshToken || ![401, 403].includes(err?.status)) {
             return { user: null, cookies: err?.status === 401 ? clearSessionCookies(env) : [] };
@@ -409,7 +417,7 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
         });
         const authUser = session?.user || await authUserFromToken(session?.access_token);
         if (!authUser?.id) return { user: null, cookies: clearSessionCookies(env) };
-        return { user: await ensureProfile(authUser), cookies: sessionCookies(session, env) };
+        return { user: await existingOrEnsureProfile(authUser), cookies: sessionCookies(session, env) };
       } catch {
         return { user: null, cookies: clearSessionCookies(env) };
       }
