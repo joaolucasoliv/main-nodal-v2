@@ -20,8 +20,7 @@ test('Vercel serves generated frontend assets before the Node serverless adapter
   assert.match(staticBuild, /dashboard\.js/);
   assert.ok(!('runtime' in vercel.functions['api/index.js']), 'Node runtime should be configured through package.json engines, not functions.runtime');
   assert.equal(typeof vercel.functions['api/index.js'].includeFiles, 'string');
-  assert.ok(vercel.functions['api/index.js'].includeFiles.includes('server/**'));
-  assert.ok(vercel.functions['api/index.js'].includeFiles.includes('web/pages/**'));
+  assert.equal(vercel.functions['api/index.js'].includeFiles, 'web/pages/**');
   assert.ok(!vercel.functions['api/index.js'].includeFiles.includes('tests/**'));
   assert.ok(!vercel.functions['api/index.js'].includeFiles.includes('scripts/**'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/' && route.destination === '/api/index.js'));
