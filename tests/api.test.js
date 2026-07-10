@@ -233,13 +233,17 @@ test('authenticated checkout sends user metadata and customer email to Stripe', 
 test('configured checkout fails closed without a public application URL', async (t) => {
   const oldBaseUrl = process.env.PUBLIC_BASE_URL;
   const oldAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const oldVercelUrl = process.env.VERCEL_URL;
   delete process.env.PUBLIC_BASE_URL;
   delete process.env.NEXT_PUBLIC_APP_URL;
+  delete process.env.VERCEL_URL;
   t.after(() => {
     if (oldBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = oldBaseUrl;
     if (oldAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = oldAppUrl;
+    if (oldVercelUrl === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = oldVercelUrl;
   });
   let called = false;
   const payments = {
