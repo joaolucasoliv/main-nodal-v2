@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createCache, MemoryCache, RedisCache } from './cache.js';
+import { createCache, MemoryCache, RedisCache } from '../server/cache.js';
 
 test('memory cache: set/get roundtrip within TTL', async () => {
   let t = 0;

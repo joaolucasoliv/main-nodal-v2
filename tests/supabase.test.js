@@ -5,7 +5,7 @@ import {
   createSupabaseClients,
   publicSupabaseConfig,
   resolveSupabaseEnv,
-} from './supabase.js';
+} from '../server/supabase.js';
 
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
 

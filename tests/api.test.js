@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
-import { createApp, createCitySearch, validateRuntimeConfig } from './server.js';
-import { createStore } from './store.js';
-import { createDatabase } from './db.js';
-import { MemoryCache } from './cache.js';
-import { createRepository } from './repository.js';
+import { createApp, createCitySearch, validateRuntimeConfig } from '../server/server.js';
+import { createStore } from '../server/store.js';
+import { createDatabase } from '../server/db.js';
+import { MemoryCache } from '../server/cache.js';
+import { createRepository } from '../server/repository.js';
 
 const LIVE_STRIPE_SECRET = ['sk', 'live', 'abc123'].join('_');
 const LIVE_STRIPE_WEBHOOK_SECRET = ['whsec', 'live123'].join('_');

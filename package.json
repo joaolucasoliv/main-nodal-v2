@@ -12,7 +12,7 @@
     "migrate": "node server/migrate.js",
     "seed:dev": "node server/seed-dev.js",
     "start": "node server/server.js",
-    "test": "node --test server/*.test.js"
+    "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
     "supabase": "^2.109.1"
