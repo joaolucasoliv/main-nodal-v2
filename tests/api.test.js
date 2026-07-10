@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
-import { createApp, createCitySearch, validateRuntimeConfig } from '../server/server.js';
+import path from 'node:path';
+import {
+  createApp, createCitySearch, staticSourcePath, validateRuntimeConfig,
+} from '../server/server.js';
 import { createStore } from '../server/store.js';
 import { createDatabase } from '../server/db.js';
 import { MemoryCache } from '../server/cache.js';
@@ -634,6 +637,10 @@ test('static server does not expose deploy metadata or internal docs', async (t)
     '/vercel.json',
     '/DEPLOYMENT.md',
     '/api/index.js',
+    '/scripts/build-static.js',
+    '/tests/api.test.js',
+    '/web/pages/index.html',
+    '/web/assets/source/nodal-wordmark.png',
     '/supabase/migrations/20260709_production_core.sql',
     '/docs/private-plan.md',
     '/docs/nodal-member-journey/nodal-journey.html',
@@ -1110,6 +1117,18 @@ test('static serving: pages resolve, traversal does not', async (t) => {
   assert.equal((await fetch(`${base}/payments.html`)).status, 200);
   assert.equal((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status, 404);
   assert.equal((await fetch(`${base}/package.json/../server/server.js`)).status, 404);
+});
+
+test('static source map preserves public URLs without exposing source directories', () => {
+  assert.equal(path.basename(staticSourcePath('/')), 'index.html');
+  assert.equal(path.basename(staticSourcePath('/dashboard.html')), 'dashboard.html');
+  assert.equal(path.basename(staticSourcePath('/styles.css')), 'styles.css');
+  assert.equal(path.basename(staticSourcePath('/dashboard.js')), 'dashboard.js');
+  assert.equal(path.basename(staticSourcePath('/assets/nodal-wordmark.webp')), 'nodal-wordmark.webp');
+  assert.equal(staticSourcePath('/web/pages/index.html'), null);
+  assert.equal(staticSourcePath('/server/server.js'), null);
+  assert.equal(staticSourcePath('/tests/api.test.js'), null);
+  assert.equal(staticSourcePath('/scripts/build-static.js'), null);
 });
 
 test('static assets bypass session resolution and carry reusable cache headers', async (t) => {

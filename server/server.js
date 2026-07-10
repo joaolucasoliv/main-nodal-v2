@@ -17,6 +17,7 @@ import { createRepository } from './repository.js';
 import { dataBackend, resolveSupabaseEnv } from './supabase.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+const WEB_ROOT = path.join(ROOT, 'web');
 const envInt = (name, fallback) => {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
@@ -26,8 +27,10 @@ const ID_RE = /^[a-z0-9-]{1,40}$/;
 const API_INTERACTION_TYPES = new Set(['skip']);
 const MAX_BODY = 32 * 1024;
 const PRIVATE_PAGES = new Set(['/dashboard.html', '/profile.html', '/payments.html']);
-const STATIC_BLOCKED_ROOTS = new Set(['server', 'api', 'docs', 'security', 'supabase', 'data', 'node_modules']);
-const STATIC_BLOCKED_FILES = new Set(['package.json', 'package-lock.json', 'README.md', 'DEPLOYMENT.md', 'vercel.json', 'AGENTS.md']);
+const STATIC_PAGES = new Set(['index.html', 'login.html', 'dashboard.html', 'profile.html', 'payments.html']);
+const STATIC_SCRIPTS = new Set(['app.js', 'auth.js', 'dashboard.js', 'i18n.js', 'nav.js', 'payments.js', 'profile.js', 'recs.js', 'script.js']);
+const STATIC_STYLES = new Set(['styles.css', 'dashboard.css']);
+const STATIC_ASSETS = new Set(['latam-map.webp', 'nodal-community.webp', 'nodal-wordmark.webp']);
 const AUTH_RATE_WINDOW_MS = 5 * 60 * 1000;
 const AUTH_RATE_LIMIT = envInt('AUTH_RATE_LIMIT', 10);
 const INTERACTION_RATE_WINDOW_MS = 60 * 1000;
@@ -494,25 +497,8 @@ async function serveStatic(req, res, pathname) {
   try { decoded = decodeURIComponent(pathname); } catch { send(res, 400, { error: 'bad path' }); return; }
   if (decoded.includes('\0')) { send(res, 400, { error: 'bad path' }); return; }
 
-  let filePath = path.normalize(path.join(ROOT, decoded));
-  if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) { send(res, 404, { error: 'not found' }); return; }
-
-  // never serve backend source, internal docs, package metadata, data, or dotfiles
-  const rel = path.relative(ROOT, filePath);
-  const segments = rel === '' ? [] : rel.split(path.sep);
-  if (
-    STATIC_BLOCKED_ROOTS.has(segments[0])
-    || STATIC_BLOCKED_FILES.has(rel)
-    || segments.some((s) => s.startsWith('.'))
-  ) {
-    send(res, 404, { error: 'not found' });
-    return;
-  }
-
-  try {
-    const stat = await fs.stat(filePath);
-    if (stat.isDirectory()) filePath = path.join(filePath, 'index.html');
-  } catch { send(res, 404, { error: 'not found' }); return; }
+  const filePath = staticSourcePath(decoded);
+  if (!filePath) { send(res, 404, { error: 'not found' }); return; }
 
   const type = MIME[path.extname(filePath).toLowerCase()];
   if (!type) { send(res, 404, { error: 'not found' }); return; }
@@ -529,6 +515,18 @@ async function serveStatic(req, res, pathname) {
   } catch {
     send(res, 404, { error: 'not found' });
   }
+}
+
+export function staticSourcePath(pathname) {
+  const rel = pathname === '/' ? 'index.html' : String(pathname || '').replace(/^\/+/, '');
+  if (STATIC_PAGES.has(rel)) return path.join(WEB_ROOT, 'pages', rel);
+  if (STATIC_SCRIPTS.has(rel)) return path.join(WEB_ROOT, 'scripts', rel);
+  if (STATIC_STYLES.has(rel)) return path.join(WEB_ROOT, 'styles', rel);
+  if (rel.startsWith('assets/')) {
+    const name = rel.slice('assets/'.length);
+    if (STATIC_ASSETS.has(name)) return path.join(WEB_ROOT, 'assets', 'optimized', name);
+  }
+  return null;
 }
 
 export function createApp({

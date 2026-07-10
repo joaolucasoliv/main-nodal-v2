@@ -2,11 +2,11 @@ import { copyFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+const WEB_ROOT = path.join(ROOT, 'web');
 const OUTPUT = path.join(ROOT, 'public');
-const STATIC_FILES = [
+const STATIC_SCRIPTS = [
   'app.js',
   'auth.js',
-  'dashboard.css',
   'dashboard.js',
   'i18n.js',
   'nav.js',
@@ -14,8 +14,8 @@ const STATIC_FILES = [
   'profile.js',
   'recs.js',
   'script.js',
-  'styles.css',
 ];
+const STATIC_STYLES = ['dashboard.css', 'styles.css'];
 const STATIC_ASSETS = [
   'latam-map.webp',
   'nodal-community.webp',
@@ -23,13 +23,17 @@ const STATIC_ASSETS = [
 ];
 
 await mkdir(OUTPUT, { recursive: true });
-await Promise.all(STATIC_FILES.map((file) => copyFile(
-  path.join(ROOT, file),
+await Promise.all(STATIC_SCRIPTS.map((file) => copyFile(
+  path.join(WEB_ROOT, 'scripts', file),
+  path.join(OUTPUT, file),
+)));
+await Promise.all(STATIC_STYLES.map((file) => copyFile(
+  path.join(WEB_ROOT, 'styles', file),
   path.join(OUTPUT, file),
 )));
 await rm(path.join(OUTPUT, 'assets'), { recursive: true, force: true });
 await mkdir(path.join(OUTPUT, 'assets'), { recursive: true });
 await Promise.all(STATIC_ASSETS.map((file) => copyFile(
-  path.join(ROOT, 'assets', file),
+  path.join(WEB_ROOT, 'assets', 'optimized', file),
   path.join(OUTPUT, 'assets', file),
 )));
