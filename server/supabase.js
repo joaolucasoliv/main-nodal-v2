@@ -421,6 +421,14 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
       });
       const authUser = data.user || (data.id ? data : null);
       const session = data.session || (data.access_token ? data : null);
+      if (Array.isArray(authUser?.identities) && authUser.identities.length === 0) {
+        return {
+          status: 202,
+          user: null,
+          cookies: [],
+          requiresEmailConfirmation: true,
+        };
+      }
       const user = await ensureProfile(authUser, fullName);
       return {
         status: session?.access_token ? 201 : 202,

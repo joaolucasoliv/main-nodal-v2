@@ -609,6 +609,12 @@ export function createApp({
             send(res, 429, { error: 'Confirmation email is temporarily unavailable. Please try again later.' });
             return;
           }
+          if (Number.isInteger(err?.status) && err.status >= 400) {
+            send(res, err.status < 500 ? err.status : 502, {
+              error: 'Account creation could not be completed. If you already confirmed your email, sign in.',
+            });
+            return;
+          }
           throw err;
         }
         if (result.error) { send(res, result.status, { error: result.error }); return; }

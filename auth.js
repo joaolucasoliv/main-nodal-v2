@@ -74,7 +74,7 @@
         password: $('signupPassword').value,
       });
       if (data.requiresEmailConfirmation) {
-        setError(error, 'Check your email to confirm your account before signing in.');
+        setError(error, 'Check your email to confirm your account. If you already confirmed it, sign in.');
         submit.disabled = false;
         return;
       }

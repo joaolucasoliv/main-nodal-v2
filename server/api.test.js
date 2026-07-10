@@ -688,6 +688,32 @@ test('auth: signup hides provider rate-limit details behind a useful retry messa
   assert.doesNotMatch(body.error, /rate limit/i);
 });
 
+test('auth: signup never exposes provider database errors', async (t) => {
+  const repository = {
+    async resolveSession() { return { user: null, cookies: [] }; },
+    async signup() {
+      throw Object.assign(new Error(
+        'insert or update on table "profile_preferences" violates foreign key constraint',
+      ), { status: 409 });
+    },
+    close() {},
+  };
+  const base = await bootApp(t, createApp({ repository }));
+  const response = await postJson(base, '/api/auth/signup', {
+    fullName: 'Existing Member',
+    email: 'member@example.com',
+    password: 'correct-horse',
+  });
+
+  assert.equal(response.status, 409);
+  const body = await response.json();
+  assert.equal(
+    body.error,
+    'Account creation could not be completed. If you already confirmed your email, sign in.',
+  );
+  assert.doesNotMatch(body.error, /profile_preferences|foreign key|constraint/i);
+});
+
 test('auth: repeated login attempts are rate limited before password work', async (t) => {
   const base = await bootDb(t);
   let last;

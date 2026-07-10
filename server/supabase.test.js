@@ -218,6 +218,35 @@ test('Supabase signup accepts the direct user response used by email confirmatio
   assert.deepEqual(result.cookies, []);
 });
 
+test('Supabase repeated signup skips profile writes for an obfuscated user', async () => {
+  const state = profileState();
+  const calls = [];
+  const repo = createSupabaseRepository({
+    env: testEnv(),
+    fetchImpl: statefulFetch(state, calls, {
+      signupResponse: {
+        id: 'f8bf7ca9-1340-4e99-a709-93c08047bb49',
+        email: state.profile.email,
+        user_metadata: {},
+        identities: [],
+      },
+    }),
+  });
+
+  const result = await repo.signup({
+    fullName: state.profile.full_name,
+    email: state.profile.email,
+    password: 'correct-horse',
+  });
+
+  assert.equal(result.status, 202);
+  assert.equal(result.requiresEmailConfirmation, true);
+  assert.equal(result.user, null);
+  assert.deepEqual(result.cookies, []);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, '/auth/v1/signup');
+});
+
 test('Supabase env rejects secret-looking keys in public config', () => {
   assert.throws(() => publicSupabaseConfig({
     NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
