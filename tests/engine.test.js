@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, addFollow, recordInteraction, getEngagement } from './store.js';
+import { createStore, addFollow, recordInteraction, getEngagement } from '../server/store.js';
 import {
   recommend, traversalScores, buildAdjacency, DECAY,
   WEIGHTS, cityScore, complementScore, LINKEDIN_BOOST,
-} from './engine.js';
+} from '../server/engine.js';
 
 test('recommendations exclude self and already-followed users', () => {
   const store = createStore();

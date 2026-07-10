@@ -1,4 +1,4 @@
-import { createDatabase, defaultDatabasePath } from './db.js';
+import { createDatabase, defaultDatabasePath } from '../server/db.js';
 
 const db = createDatabase();
 db.close();

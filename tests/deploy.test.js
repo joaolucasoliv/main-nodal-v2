@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -8,22 +8,63 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 test('Vercel serves generated frontend assets before the Node serverless adapter', () => {
   const vercel = JSON.parse(readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
   const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  const staticBuild = readFileSync(path.join(ROOT, 'server', 'build-static.js'), 'utf8');
+  const staticBuild = readFileSync(path.join(ROOT, 'scripts', 'build-static.js'), 'utf8');
   assert.equal(vercel.framework, null);
   assert.equal(vercel.outputDirectory, 'public');
   assert.ok(readdirSync(path.join(ROOT, vercel.outputDirectory)).length > 0);
-  assert.match(packageJson.scripts.build, /server\/build-static\.js/);
+  assert.match(packageJson.scripts.build, /scripts\/build-static\.js/);
+  assert.match(packageJson.scripts.migrate, /scripts\/migrate\.js/);
+  assert.match(packageJson.scripts['seed:dev'], /scripts\/seed-dev\.js/);
   assert.match(staticBuild, /assets/);
   assert.match(staticBuild, /styles\.css/);
   assert.match(staticBuild, /dashboard\.js/);
   assert.ok(!('runtime' in vercel.functions['api/index.js']), 'Node runtime should be configured through package.json engines, not functions.runtime');
   assert.equal(typeof vercel.functions['api/index.js'].includeFiles, 'string');
-  assert.ok(vercel.functions['api/index.js'].includeFiles.includes('server/**'));
+  assert.equal(vercel.functions['api/index.js'].includeFiles, 'web/pages/**');
+  assert.ok(!vercel.functions['api/index.js'].includeFiles.includes('tests/**'));
+  assert.ok(!vercel.functions['api/index.js'].includeFiles.includes('scripts/**'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/' && route.destination === '/api/index.js'));
   assert.ok(vercel.rewrites.some((route) => route.source === '/:path*' && route.destination === '/api/index.js'));
   assert.ok(vercel.headers.some((route) => route.source === '/assets/(.*)'));
   assert.ok(vercel.headers.some((route) => route.source.endsWith('.js')));
   assert.ok(vercel.headers.some((route) => route.source.endsWith('.css')));
+});
+
+test('repository layout separates deployable code, source assets, operations, and tests', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const readme = readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  const deployment = readFileSync(path.join(ROOT, 'DEPLOYMENT.md'), 'utf8');
+
+  for (const directory of [
+    'api',
+    'docs',
+    'scripts',
+    'server',
+    'supabase',
+    'tests',
+    'web/assets/optimized',
+    'web/assets/source',
+    'web/pages',
+    'web/scripts',
+    'web/styles',
+  ]) {
+    assert.ok(existsSync(path.join(ROOT, directory)), `expected ${directory}`);
+  }
+
+  for (const formerRootFile of [
+    'index.html',
+    'dashboard.html',
+    'app.js',
+    'dashboard.js',
+    'styles.css',
+  ]) {
+    assert.equal(existsSync(path.join(ROOT, formerRootFile)), false, `${formerRootFile} belongs under web/`);
+  }
+
+  assert.match(packageJson.scripts.test, /tests\/\*\.test\.js/);
+  assert.match(readme, /## Repository Layout/);
+  assert.match(readme, /`web\/pages\/`/);
+  assert.match(deployment, /generated `public\/` assets/);
 });
 
 test('Supabase migration creates required tables with RLS policies and indexes', () => {

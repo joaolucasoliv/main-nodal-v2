@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
-import { createApp, createCitySearch, validateRuntimeConfig } from './server.js';
-import { createStore } from './store.js';
-import { createDatabase } from './db.js';
-import { MemoryCache } from './cache.js';
-import { createRepository } from './repository.js';
+import path from 'node:path';
+import {
+  createApp, createCitySearch, staticSourcePath, validateRuntimeConfig,
+} from '../server/server.js';
+import { createStore } from '../server/store.js';
+import { createDatabase } from '../server/db.js';
+import { MemoryCache } from '../server/cache.js';
+import { createRepository } from '../server/repository.js';
 
 const LIVE_STRIPE_SECRET = ['sk', 'live', 'abc123'].join('_');
 const LIVE_STRIPE_WEBHOOK_SECRET = ['whsec', 'live123'].join('_');
@@ -230,13 +233,17 @@ test('authenticated checkout sends user metadata and customer email to Stripe', 
 test('configured checkout fails closed without a public application URL', async (t) => {
   const oldBaseUrl = process.env.PUBLIC_BASE_URL;
   const oldAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const oldVercelUrl = process.env.VERCEL_URL;
   delete process.env.PUBLIC_BASE_URL;
   delete process.env.NEXT_PUBLIC_APP_URL;
+  delete process.env.VERCEL_URL;
   t.after(() => {
     if (oldBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = oldBaseUrl;
     if (oldAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = oldAppUrl;
+    if (oldVercelUrl === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = oldVercelUrl;
   });
   let called = false;
   const payments = {
@@ -463,6 +470,21 @@ test('production runtime config fails closed when deploy-critical env is missing
     COOKIE_SECURE: 'true',
     PAYMENTS_MODE: 'preview',
   }));
+  assert.doesNotThrow(() => validateRuntimeConfig({
+    NODE_ENV: 'production',
+    DATA_BACKEND: 'sqlite',
+    DATABASE_PATH: '/var/lib/nodal/nodal.sqlite',
+    VERCEL_URL: 'nodal-preview.vercel.app',
+    COOKIE_SECURE: 'true',
+    PAYMENTS_MODE: 'preview',
+  }));
+  assert.throws(() => validateRuntimeConfig({
+    NODE_ENV: 'production',
+    DATA_BACKEND: 'sqlite',
+    DATABASE_PATH: '/var/lib/nodal/nodal.sqlite',
+    COOKIE_SECURE: 'true',
+    PAYMENTS_MODE: 'preview',
+  }), /public base URL/);
   assert.throws(() => validateRuntimeConfig({
     NODE_ENV: 'production',
     DATA_BACKEND: 'supabase',
@@ -634,6 +656,10 @@ test('static server does not expose deploy metadata or internal docs', async (t)
     '/vercel.json',
     '/DEPLOYMENT.md',
     '/api/index.js',
+    '/scripts/build-static.js',
+    '/tests/api.test.js',
+    '/web/pages/index.html',
+    '/web/assets/source/nodal-wordmark.png',
     '/supabase/migrations/20260709_production_core.sql',
     '/docs/private-plan.md',
     '/docs/nodal-member-journey/nodal-journey.html',
@@ -1110,6 +1136,18 @@ test('static serving: pages resolve, traversal does not', async (t) => {
   assert.equal((await fetch(`${base}/payments.html`)).status, 200);
   assert.equal((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status, 404);
   assert.equal((await fetch(`${base}/package.json/../server/server.js`)).status, 404);
+});
+
+test('static source map preserves public URLs without exposing source directories', () => {
+  assert.equal(path.basename(staticSourcePath('/')), 'index.html');
+  assert.equal(path.basename(staticSourcePath('/dashboard.html')), 'dashboard.html');
+  assert.equal(path.basename(staticSourcePath('/styles.css')), 'styles.css');
+  assert.equal(path.basename(staticSourcePath('/dashboard.js')), 'dashboard.js');
+  assert.equal(path.basename(staticSourcePath('/assets/nodal-wordmark.webp')), 'nodal-wordmark.webp');
+  assert.equal(staticSourcePath('/web/pages/index.html'), null);
+  assert.equal(staticSourcePath('/server/server.js'), null);
+  assert.equal(staticSourcePath('/tests/api.test.js'), null);
+  assert.equal(staticSourcePath('/scripts/build-static.js'), null);
 });
 
 test('static assets bypass session resolution and carry reusable cache headers', async (t) => {

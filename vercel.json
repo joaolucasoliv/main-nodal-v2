@@ -7,7 +7,7 @@
   "devCommand": "npm start",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{server/**,*.html}"
+      "includeFiles": "web/pages/**"
     }
   },
   "headers": [
