@@ -7,7 +7,7 @@
   "devCommand": "npm start",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{server/**,*.html,*.css,*.js}"
+      "includeFiles": "{server/**,assets/**,*.html,*.css,*.js}"
     }
   },
   "rewrites": [
