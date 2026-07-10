@@ -33,7 +33,12 @@ create table if not exists public.profile_preferences (
   notification_preferences jsonb,
   data_consent jsonb,
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  constraint profile_preferences_directory_public_boolean check (
+    data_consent is null
+    or not (data_consent ? 'directoryPublic')
+    or jsonb_typeof(data_consent -> 'directoryPublic') = 'boolean'
+  )
 );
 
 create table if not exists public.onboarding_responses (
@@ -79,6 +84,8 @@ create table if not exists public.stripe_customers (
   stripe_checkout_session_id text,
   current_period_end text,
   stripe_latest_event_created integer not null default 0,
+  stripe_latest_event_rank integer not null default 0,
+  stripe_latest_event_id text not null default '',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -166,15 +173,7 @@ on public.profiles for select to authenticated
 using (auth.uid() = id);
 
 drop policy if exists "profiles_insert_own" on public.profiles;
-create policy "profiles_insert_own"
-on public.profiles for insert to authenticated
-with check (auth.uid() = id);
-
 drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own"
-on public.profiles for update to authenticated
-using (auth.uid() = id)
-with check (auth.uid() = id);
 
 drop policy if exists "profile_preferences_select_own" on public.profile_preferences;
 create policy "profile_preferences_select_own"
@@ -182,15 +181,7 @@ on public.profile_preferences for select to authenticated
 using (auth.uid() = user_id);
 
 drop policy if exists "profile_preferences_insert_own" on public.profile_preferences;
-create policy "profile_preferences_insert_own"
-on public.profile_preferences for insert to authenticated
-with check (auth.uid() = user_id);
-
 drop policy if exists "profile_preferences_update_own" on public.profile_preferences;
-create policy "profile_preferences_update_own"
-on public.profile_preferences for update to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
 
 drop policy if exists "onboarding_responses_select_own" on public.onboarding_responses;
 create policy "onboarding_responses_select_own"
@@ -198,15 +189,7 @@ on public.onboarding_responses for select to authenticated
 using (auth.uid() = user_id);
 
 drop policy if exists "onboarding_responses_insert_own" on public.onboarding_responses;
-create policy "onboarding_responses_insert_own"
-on public.onboarding_responses for insert to authenticated
-with check (auth.uid() = user_id);
-
 drop policy if exists "onboarding_responses_update_own" on public.onboarding_responses;
-create policy "onboarding_responses_update_own"
-on public.onboarding_responses for update to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
 
 drop policy if exists "organization_memberships_select_own" on public.organization_memberships;
 create policy "organization_memberships_select_own"
@@ -237,14 +220,7 @@ on public.member_follows for select to authenticated
 using (auth.uid() = user_id or auth.uid() = target_user_id);
 
 drop policy if exists "member_follows_insert_own" on public.member_follows;
-create policy "member_follows_insert_own"
-on public.member_follows for insert to authenticated
-with check (auth.uid() = user_id);
-
 drop policy if exists "member_follows_delete_own" on public.member_follows;
-create policy "member_follows_delete_own"
-on public.member_follows for delete to authenticated
-using (auth.uid() = user_id);
 
 drop policy if exists "member_interactions_select_own" on public.member_interactions;
 create policy "member_interactions_select_own"
@@ -252,9 +228,6 @@ on public.member_interactions for select to authenticated
 using (auth.uid() = from_user_id or auth.uid() = to_user_id);
 
 drop policy if exists "member_interactions_insert_own" on public.member_interactions;
-create policy "member_interactions_insert_own"
-on public.member_interactions for insert to authenticated
-with check (auth.uid() = from_user_id);
 
 create or replace view public.public_profiles as
 select
@@ -272,6 +245,123 @@ select
   p.updated_at
 from public.profiles p
 join public.profile_preferences pref on pref.user_id = p.id
-where coalesce((pref.data_consent ->> 'directoryPublic')::boolean, false) = true;
+where coalesce(pref.data_consent -> 'directoryPublic', 'false'::jsonb) = 'true'::jsonb;
 
 grant select on public.public_profiles to anon, authenticated;
+
+create or replace function public.apply_stripe_event(
+  p_event_id text,
+  p_event_type text,
+  p_event_created integer,
+  p_event_rank integer,
+  p_user_id uuid default null,
+  p_stripe_customer_id text default null,
+  p_stripe_subscription_id text default null,
+  p_stripe_checkout_session_id text default null,
+  p_status text default 'pending',
+  p_current_period_end text default null
+)
+returns setof public.stripe_customers
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_existing public.stripe_customers%rowtype;
+  v_user_id uuid;
+begin
+  if nullif(btrim(p_event_id), '') is null then
+    raise exception 'Stripe event id is required';
+  end if;
+
+  insert into public.stripe_events (id, type, event_created)
+  values (left(p_event_id, 120), left(coalesce(p_event_type, 'unknown'), 120), greatest(coalesce(p_event_created, 0), 0))
+  on conflict (id) do nothing;
+
+  if not found then
+    return query
+      select sc.*
+      from public.stripe_customers sc
+      where (nullif(btrim(p_stripe_subscription_id), '') is not null
+          and sc.stripe_subscription_id = nullif(btrim(p_stripe_subscription_id), ''))
+         or (nullif(btrim(p_stripe_checkout_session_id), '') is not null
+          and sc.stripe_checkout_session_id = nullif(btrim(p_stripe_checkout_session_id), ''))
+         or (p_user_id is not null and sc.user_id = p_user_id)
+      order by sc.updated_at desc
+      limit 1;
+    return;
+  end if;
+
+  select sc.*
+  into v_existing
+  from public.stripe_customers sc
+  where (nullif(btrim(p_stripe_subscription_id), '') is not null
+      and sc.stripe_subscription_id = nullif(btrim(p_stripe_subscription_id), ''))
+     or (nullif(btrim(p_stripe_checkout_session_id), '') is not null
+      and sc.stripe_checkout_session_id = nullif(btrim(p_stripe_checkout_session_id), ''))
+     or (p_user_id is not null and sc.user_id = p_user_id)
+  order by sc.updated_at desc
+  limit 1
+  for update;
+
+  v_user_id := coalesce(v_existing.user_id, p_user_id);
+  if v_user_id is null then
+    return;
+  end if;
+
+  insert into public.stripe_customers (
+    user_id,
+    stripe_customer_id,
+    stripe_subscription_id,
+    stripe_checkout_session_id,
+    subscription_status,
+    current_period_end,
+    stripe_latest_event_created,
+    stripe_latest_event_rank,
+    stripe_latest_event_id
+  ) values (
+    v_user_id,
+    nullif(btrim(p_stripe_customer_id), ''),
+    nullif(btrim(p_stripe_subscription_id), ''),
+    nullif(btrim(p_stripe_checkout_session_id), ''),
+    coalesce(nullif(btrim(p_status), ''), 'pending'),
+    nullif(btrim(p_current_period_end), ''),
+    greatest(coalesce(p_event_created, 0), 0),
+    greatest(coalesce(p_event_rank, 0), 0),
+    left(p_event_id, 120)
+  )
+  on conflict (user_id) do update
+  set stripe_customer_id = coalesce(excluded.stripe_customer_id, stripe_customers.stripe_customer_id),
+      stripe_subscription_id = coalesce(excluded.stripe_subscription_id, stripe_customers.stripe_subscription_id),
+      stripe_checkout_session_id = coalesce(excluded.stripe_checkout_session_id, stripe_customers.stripe_checkout_session_id),
+      subscription_status = excluded.subscription_status,
+      current_period_end = coalesce(excluded.current_period_end, stripe_customers.current_period_end),
+      stripe_latest_event_created = excluded.stripe_latest_event_created,
+      stripe_latest_event_rank = excluded.stripe_latest_event_rank,
+      stripe_latest_event_id = excluded.stripe_latest_event_id,
+      updated_at = now()
+  where (
+    stripe_customers.stripe_latest_event_created,
+    stripe_customers.stripe_latest_event_rank,
+    stripe_customers.stripe_latest_event_id
+  ) < (
+    excluded.stripe_latest_event_created,
+    excluded.stripe_latest_event_rank,
+    excluded.stripe_latest_event_id
+  )
+  returning * into v_existing;
+
+  if not found then
+    select sc.* into v_existing
+    from public.stripe_customers sc
+    where sc.user_id = v_user_id;
+  end if;
+
+  return next v_existing;
+end;
+$$;
+
+revoke all on function public.apply_stripe_event(text, text, integer, integer, uuid, text, text, text, text, text)
+from public, anon, authenticated;
+grant execute on function public.apply_stripe_event(text, text, integer, integer, uuid, text, text, text, text, text)
+to service_role;

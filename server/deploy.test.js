@@ -34,7 +34,6 @@ test('Supabase migration creates required tables with RLS policies and indexes',
 
   for (const policy of [
     'profiles_select_own',
-    'profiles_update_own',
     'profile_preferences_select_own',
     'onboarding_responses_select_own',
     'stripe_customers_select_own',
@@ -53,5 +52,43 @@ test('Supabase migration creates required tables with RLS policies and indexes',
     assert.match(sql, new RegExp(`create index if not exists ${index}`, 'i'));
   }
 
+  for (const serverOwnedPolicy of [
+    'profiles_insert_own',
+    'profiles_update_own',
+    'profile_preferences_insert_own',
+    'profile_preferences_update_own',
+    'onboarding_responses_insert_own',
+    'onboarding_responses_update_own',
+  ]) {
+    assert.doesNotMatch(sql, new RegExp(`create policy "${serverOwnedPolicy}"`, 'i'));
+  }
+
+  assert.match(sql, /profile_preferences_directory_public_boolean/i);
+  assert.match(sql, /jsonb_typeof\s*\(\s*data_consent\s*->\s*'directoryPublic'\s*\)\s*=\s*'boolean'/i);
+  assert.doesNotMatch(sql, /directoryPublic'\)\s*::\s*boolean/i);
+  assert.match(sql, /stripe_latest_event_rank\s+integer\s+not null\s+default\s+0/i);
+  assert.match(sql, /stripe_latest_event_id\s+text\s+not null\s+default\s+''/i);
+  assert.match(sql, /create or replace function public\.apply_stripe_event\b/i);
+  assert.match(sql, /on conflict\s*\(user_id\)\s*do update/i);
+
   assert.doesNotMatch(sql, /credit_card|card_number|cvc|stripe_secret/i);
+});
+
+test('CI uses immutable action revisions and supports pre-main validation refs', () => {
+  const workflow = readFileSync(path.join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
+  assert.match(workflow, /actions\/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5/);
+  assert.match(workflow, /actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/);
+  assert.doesNotMatch(workflow, /uses:\s+actions\/(checkout|setup-node)@v\d+/);
+  assert.match(workflow, /release-validation-\*/);
+  assert.match(workflow, /npm audit --audit-level=low/);
+});
+
+test('release tree excludes internal process artifacts and unused integration placeholders', () => {
+  const publicDocs = [
+    readFileSync(path.join(ROOT, '.env.example'), 'utf8'),
+    readFileSync(path.join(ROOT, 'README.md'), 'utf8'),
+    readFileSync(path.join(ROOT, 'DEPLOYMENT.md'), 'utf8'),
+  ].join('\n');
+  assert.doesNotMatch(publicDocs, /NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(publicDocs, /LINKEDIN_CLIENT_(ID|SECRET)/);
 });

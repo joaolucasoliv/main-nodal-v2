@@ -71,25 +71,3 @@ export function defaultProfilePreferences(userId) {
     data_consent: { directoryPublic: false },
   };
 }
-
-export function defaultOnboardingResponse(userId) {
-  return {
-    user_id: userId,
-    interests: [],
-    skills: [],
-    goals: [],
-    contribution_preferences: [],
-    availability: '',
-    mentoring_interest: 'none',
-    raw_answers: {},
-  };
-}
-
-export function defaultStripeCustomer(userId) {
-  return {
-    user_id: userId,
-    stripe_customer_id: '',
-    subscription_status: 'pending',
-    stripe_subscription_id: '',
-  };
-}

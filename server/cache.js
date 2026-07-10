@@ -7,8 +7,9 @@ import net from 'node:net';
 import tls from 'node:tls';
 
 export class MemoryCache {
-  constructor({ now = Date.now } = {}) {
+  constructor({ now = Date.now, maxEntries = 1000 } = {}) {
     this.now = now;
+    this.maxEntries = Math.max(1, Number(maxEntries) || 1000);
     this.store = new Map();
   }
   async get(key) {
@@ -18,7 +19,15 @@ export class MemoryCache {
     return entry.value;
   }
   async set(key, value, ttlMs) {
+    const now = this.now();
+    for (const [storedKey, entry] of this.store) {
+      if (entry.expires <= now) this.store.delete(storedKey);
+    }
+    this.store.delete(key);
     this.store.set(key, { value, expires: this.now() + ttlMs });
+    while (this.store.size > this.maxEntries) {
+      this.store.delete(this.store.keys().next().value);
+    }
   }
   async del(...keys) {
     for (const key of keys) this.store.delete(key);
@@ -26,18 +35,32 @@ export class MemoryCache {
 }
 
 export class RedisCache {
-  constructor(url) {
+  constructor(url, { commandTimeoutMs = 1000, maxResponseBytes = 1024 * 1024 } = {}) {
     const u = new URL(url);
+    if (!['redis:', 'rediss:'].includes(u.protocol)) throw new Error('REDIS_URL must use redis:// or rediss://');
     this.host = u.hostname || '127.0.0.1';
     this.tls = u.protocol === 'rediss:';
     this.port = Number(u.port || (this.tls ? 6380 : 6379));
     this.username = decodeURIComponent(u.username || '');
     this.password = decodeURIComponent(u.password || '');
     this.db = u.pathname && u.pathname !== '/' ? u.pathname.slice(1) : '';
+    this.commandTimeoutMs = Math.max(1, Number(commandTimeoutMs) || 1000);
+    this.maxResponseBytes = Math.max(1, Number(maxResponseBytes) || 1024 * 1024);
     this.sock = null;
     this.dead = false;
-    this.pending = [];      // FIFO resolvers, one per in-flight command
+    this.pending = [];
     this.buf = Buffer.alloc(0);
+  }
+
+  #fail() {
+    if (this.dead) return;
+    this.dead = true;
+    this.sock?.destroy();
+    while (this.pending.length) {
+      const pending = this.pending.shift();
+      clearTimeout(pending.timer);
+      pending.resolve(null);
+    }
   }
 
   connect(timeoutMs = 1000) {
@@ -47,8 +70,8 @@ export class RedisCache {
         ? { host: this.host, port: this.port, servername: this.host }
         : { host: this.host, port: this.port };
       const sock = connect(options);
-      const timer = setTimeout(() => { sock.destroy(); reject(new Error('redis connect timeout')); }, timeoutMs);
-      sock.once('connect', async () => {
+      const timer = setTimeout(() => { this.#fail(); sock.destroy(); reject(new Error('redis connect timeout')); }, timeoutMs);
+      sock.once(this.tls ? 'secureConnect' : 'connect', async () => {
         clearTimeout(timer);
         this.sock = sock;
         try {
@@ -62,25 +85,29 @@ export class RedisCache {
           }
           resolve();
         } catch (err) {
-          this.dead = true;
-          sock.destroy();
+          this.#fail();
           reject(err);
         }
       });
-      sock.once('error', (err) => { clearTimeout(timer); this.dead = true; reject(err); });
+      sock.once('error', (err) => { clearTimeout(timer); this.#fail(); reject(err); });
       sock.on('data', (chunk) => this.#feed(chunk));
       sock.on('close', () => {
-        this.dead = true;
-        while (this.pending.length) this.pending.shift()(null);
+        this.#fail();
       });
     });
   }
 
   #feed(chunk) {
+    if (this.buf.length + chunk.length > this.maxResponseBytes) {
+      this.#fail();
+      return;
+    }
     this.buf = Buffer.concat([this.buf, chunk]);
     let parsed;
     while (this.pending.length && (parsed = this.#parse()) !== undefined) {
-      this.pending.shift()(parsed);
+      const pending = this.pending.shift();
+      clearTimeout(pending.timer);
+      pending.resolve(parsed);
     }
   }
 
@@ -112,8 +139,12 @@ export class RedisCache {
     if (this.dead || !this.sock) return Promise.resolve(null);
     const payload = [`*${args.length}`, ...args.flatMap((a) => [`$${Buffer.byteLength(a)}`, a])].join('\r\n') + '\r\n';
     return new Promise((resolve) => {
-      this.pending.push(resolve);
-      this.sock.write(payload, (err) => { if (err) { this.dead = true; resolve(null); } });
+      const pending = {
+        resolve,
+        timer: setTimeout(() => this.#fail(), this.commandTimeoutMs),
+      };
+      this.pending.push(pending);
+      this.sock.write(payload, (err) => { if (err) this.#fail(); });
     });
   }
 
@@ -122,11 +153,22 @@ export class RedisCache {
   async del(...keys) { if (keys.length) await this.#cmd('DEL', ...keys); }
 }
 
-export async function createCache(log = console) {
-  const url = process.env.REDIS_URL;
+function isLoopback(hostname) {
+  return hostname === 'localhost' || hostname === '::1' || hostname.startsWith('127.');
+}
+
+export async function createCache(log = console, env = process.env) {
+  const url = env.REDIS_URL;
   if (url) {
+    const parsed = new URL(url);
+    if (env.NODE_ENV === 'production' && parsed.protocol !== 'rediss:' && !isLoopback(parsed.hostname)) {
+      throw new Error('REDIS_URL must use rediss:// outside loopback in production');
+    }
     try {
-      const redis = new RedisCache(url);
+      const redis = new RedisCache(url, {
+        commandTimeoutMs: env.REDIS_COMMAND_TIMEOUT_MS,
+        maxResponseBytes: env.REDIS_MAX_RESPONSE_BYTES,
+      });
       await redis.connect();
       log.log(`cache: redis at ${redis.tls ? 'rediss' : 'redis'}://${redis.host}:${redis.port}`);
       return redis;
@@ -134,5 +176,5 @@ export async function createCache(log = console) {
       log.warn(`cache: redis unavailable (${err.message}) — falling back to in-memory TTL cache`);
     }
   }
-  return new MemoryCache();
+  return new MemoryCache({ maxEntries: env.MEMORY_CACHE_MAX_ENTRIES });
 }

@@ -2,6 +2,7 @@
    Zero dependencies — run with `node server/server.js` (PORT, DATABASE_PATH, REDIS_URL optional). */
 
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -392,40 +393,69 @@ function stripeTimestampToIso(value) {
 }
 
 async function recordStripeEvent(repository, event) {
-  if (!(await repository.recordStripeEventId({ id: event?.id, type: event?.type, created: event?.created }))) return;
   const object = event?.data?.object;
   if (!object || typeof object !== 'object') return;
-  const stripeEventCreated = Number(event.created) || 0;
+  const rank = {
+    'checkout.session.completed': 10,
+    'customer.subscription.updated': 20,
+    'customer.subscription.deleted': 30,
+  }[event.type];
+  if (!rank) return;
+  const mutation = {
+    eventId: String(event.id || ''),
+    eventType: String(event.type || ''),
+    eventCreated: Number(event.created) || 0,
+    eventRank: rank,
+    stripeCustomerId: String(object.customer || ''),
+    stripeSubscriptionId: null,
+    stripeCheckoutSessionId: null,
+    currentPeriodEnd: null,
+  };
   if (event.type === 'checkout.session.completed') {
     const userId = String(object.client_reference_id || object.metadata?.nodal_user_id || '');
     if (!userId || !(await repository.getUserById(userId))) return;
     const paid = object.payment_status === 'paid' || object.payment_status === 'no_payment_required';
-    await repository.upsertSubscription({
+    await repository.applyStripeEvent({
+      ...mutation,
       userId,
-      stripeCustomerId: String(object.customer || ''),
       stripeSubscriptionId: String(object.subscription || ''),
       stripeCheckoutSessionId: String(object.id || ''),
       status: paid ? 'active' : 'pending',
-      stripeEventCreated,
     });
     return;
   }
-  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-    const stripeSubscriptionId = String(object.id || '');
-    const status = event.type === 'customer.subscription.deleted' ? 'canceled' : object.status;
-    const currentPeriodEnd = stripeTimestampToIso(object.current_period_end);
-    const updated = await repository.updateSubscriptionByStripeId(stripeSubscriptionId, { status, currentPeriodEnd, stripeEventCreated });
-    if (!updated && object.metadata?.nodal_user_id && await repository.getUserById(object.metadata.nodal_user_id)) {
-      await repository.upsertSubscription({
-        userId: object.metadata.nodal_user_id,
-        stripeCustomerId: String(object.customer || ''),
-        stripeSubscriptionId,
-        status,
-        currentPeriodEnd,
-        stripeEventCreated,
-      });
-    }
+  const metadataUserId = String(object.metadata?.nodal_user_id || '');
+  const userId = metadataUserId && await repository.getUserById(metadataUserId) ? metadataUserId : null;
+  await repository.applyStripeEvent({
+    ...mutation,
+    userId,
+    stripeSubscriptionId: String(object.id || ''),
+    status: event.type === 'customer.subscription.deleted' ? 'canceled' : object.status,
+    currentPeriodEnd: stripeTimestampToIso(object.current_period_end),
+  });
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
   }
+  return value;
+}
+
+function graphFingerprint(graph) {
+  const state = {
+    users: [...graph.users.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, user]) => [id, stableValue(user)]),
+    follows: [...graph.follows.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, targets]) => [id, [...targets].sort()]),
+    engagement: [...graph.engagement.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([edge, events]) => [edge, [...events].map(stableValue).sort((a, b) => a.at - b.at || a.w - b.w)]),
+  };
+  return createHash('sha256').update(JSON.stringify(state)).digest('base64url').slice(0, 24);
 }
 
 function sanitizeProfilePatch(body) {
@@ -510,8 +540,7 @@ export function createApp({
   const useDb = Boolean(repository);
   const authLimiter = createWindowRateLimiter({ windowMs: AUTH_RATE_WINDOW_MS, limit: AUTH_RATE_LIMIT });
   const interactionLimiter = createWindowRateLimiter({ windowMs: INTERACTION_RATE_WINDOW_MS, limit: INTERACTION_RATE_LIMIT });
-  let visibilityVersion = 1;
-  const cacheKey = (id) => `rec:v${visibilityVersion}:${id}`;
+  const cacheKey = (id, graph) => `rec:v2:${id}:${graphFingerprint(graph)}`;
   if (repository?.cleanupExpiredSessions) repository.cleanupExpiredSessions();
 
   const server = http.createServer(async (req, res) => {
@@ -521,6 +550,7 @@ export function createApp({
       const canonical = canonicalPathname(pathname);
       const session = useDb ? await repository.resolveSession(req) : { user: null, cookies: [] };
       const sessionUser = session.user;
+      if (session.cookies?.length) res.setHeader('Set-Cookie', session.cookies);
 
       if (!pathname.startsWith('/api/')) {
         if (useDb && canonical && PRIVATE_PAGES.has(canonical) && !sessionUser) {
@@ -639,13 +669,8 @@ export function createApp({
       if (useDb && req.method === 'PATCH' && pathname === '/api/me') {
         if (!requireAuth(res, sessionUser)) return;
         if (!sameOrigin(req)) { send(res, 403, { error: 'cross-origin request rejected' }); return; }
-        const oldKey = cacheKey(sessionUser.id);
-        const oldConsent = repository.toApiUser(sessionUser).partC.consent;
         const patch = sanitizeProfilePatch(await readJsonBody(req));
         const user = await repository.updateUserProfile(sessionUser.id, patch);
-        const newConsent = repository.toApiUser(user).partC.consent;
-        if (oldConsent !== newConsent) visibilityVersion += 1;
-        await cache.del(oldKey, cacheKey(sessionUser.id));
         send(res, 200, { user: repository.toApiUser(user) });
         return;
       }
@@ -674,7 +699,8 @@ export function createApp({
         const activeStore = useDb ? await repository.loadGraphStore({ viewerId: userId }) : store;
         if (!activeStore.users.has(userId)) { send(res, 404, { error: 'unknown user' }); return; }
 
-        const cached = await cache.get(cacheKey(userId));
+        const key = cacheKey(userId, activeStore);
+        const cached = await cache.get(key);
         if (cached) {
           send(res, 200, cached, { 'X-Cache': 'HIT', 'Content-Type': 'application/json; charset=utf-8' });
           return;
@@ -682,7 +708,7 @@ export function createApp({
 
         const recommendations = recommend(activeStore, userId) ?? [];
         const payload = { userId, generatedAt: new Date().toISOString(), recommendations };
-        await cache.set(cacheKey(userId), JSON.stringify(payload), REC_TTL_MS);
+        await cache.set(key, JSON.stringify(payload), REC_TTL_MS);
         send(res, 200, payload, { 'X-Cache': 'MISS' });
         return;
       }
@@ -719,7 +745,7 @@ export function createApp({
         }
 
         // graph changed — both parties' recommendations are stale
-        await cache.del(cacheKey(userId), cacheKey(targetId));
+        await cache.del(cacheKey(userId, activeStore), cacheKey(targetId, activeStore));
         send(res, 200, { ok: true, userId, targetId, action });
         return;
       }

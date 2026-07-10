@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - dev
+      - 'release-validation-*'
 
 permissions:
   contents: read
@@ -16,10 +17,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
           cache: npm
@@ -30,5 +31,5 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=low
+      - name: Audit dependencies
+        run: npm audit --audit-level=low

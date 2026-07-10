@@ -1,5 +1,6 @@
 import {
   addFollowDb,
+  applyStripeEvent,
   createDatabase,
   createUser,
   deleteExpiredSessions,
@@ -11,11 +12,8 @@ import {
   listDirectoryUsers,
   loadGraphStore,
   recordInteractionDb,
-  recordStripeEventId,
   toApiUser,
-  updateSubscriptionByStripeId,
   updateUserProfile,
-  upsertSubscription,
 } from './db.js';
 import {
   clearSessionCookie,
@@ -85,14 +83,8 @@ function createSqliteRepository(db, { ownsDb = false } = {}) {
     async getSubscriptionStatus(userId) {
       return getSubscriptionStatus(db, userId);
     },
-    async upsertSubscription(args) {
-      return upsertSubscription(db, args);
-    },
-    async updateSubscriptionByStripeId(stripeSubscriptionId, args) {
-      return updateSubscriptionByStripeId(db, stripeSubscriptionId, args);
-    },
-    async recordStripeEventId(args) {
-      return recordStripeEventId(db, args);
+    async applyStripeEvent(args) {
+      return applyStripeEvent(db, args);
     },
     close() {
       if (ownsDb) db.close();

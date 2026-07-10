@@ -3,6 +3,16 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { recordInteraction } from './store.js';
+import {
+  DEFAULT_INDICATORS,
+  DEFAULT_PART_C,
+  canApplyForMentor,
+  cleanIndicators,
+  cleanRequests,
+  cleanTopics,
+  normalizeIndicators,
+  normalizePartC,
+} from './profile-policy.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -12,20 +22,6 @@ const envInt = (name, fallback) => {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 };
 
-const DEFAULT_PART_C = {
-  bio: '',
-  linkedin: '',
-  portfolio: '',
-  references: '',
-  availability: '',
-  consent: false,
-};
-const DEFAULT_INDICATORS = { leadership: 'No', transmission: 'No' };
-const INDICATOR_VALUES = {
-  leadership: new Set(['No', 'Once or twice', 'Regularly']),
-  transmission: new Set(['No', 'Informally', 'Formally']),
-};
-const REQUEST_KEYS = new Set(['knowledge', 'project', 'territory', 'community']);
 const MAX_INTERACTION_EVENTS_PER_PAIR = envInt('MAX_INTERACTION_EVENTS_PER_PAIR', 50);
 
 export function defaultDatabasePath(env = process.env) {
@@ -152,9 +148,18 @@ const MIGRATIONS = [
       CREATE INDEX stripe_events_type_idx ON stripe_events(type, event_created);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      ALTER TABLE subscriptions
+        ADD COLUMN stripe_latest_event_rank INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE subscriptions
+        ADD COLUMN stripe_latest_event_id TEXT NOT NULL DEFAULT '';
+    `,
+  },
 ];
 
-export function runMigrations(db) {
+function runMigrations(db) {
   db.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -196,62 +201,8 @@ function parseJson(value, fallback) {
 
 const json = (value) => JSON.stringify(value ?? null);
 
-function normalizePartC(value) {
-  return { ...DEFAULT_PART_C, ...(value && typeof value === 'object' ? value : {}) };
-}
-
-function normalizeIndicators(value) {
-  return { ...DEFAULT_INDICATORS, ...(value && typeof value === 'object' ? value : {}) };
-}
-
-function cleanIndicators(value) {
-  const merged = normalizeIndicators(value);
-  return Object.fromEntries(Object.entries(DEFAULT_INDICATORS).map(([key, fallback]) => {
-    const candidate = String(merged[key] ?? fallback);
-    return [key, INDICATOR_VALUES[key].has(candidate) ? candidate : fallback];
-  }));
-}
-
 function isDirectoryVisible(row) {
   return normalizePartC(parseJson(row.part_c_json, DEFAULT_PART_C)).consent === true;
-}
-
-function cleanTopics(value, currentTopics = []) {
-  const previous = new Map(currentTopics.map((topic) => [String(topic.name || topic).trim().toLowerCase(), topic]));
-  if (!Array.isArray(value)) return [];
-  return value.slice(0, 12).map((item) => {
-    const rawName = typeof item === 'object' && item ? item.name : item;
-    const name = String(rawName ?? '').trim().slice(0, 80);
-    if (!name) return null;
-    const prior = previous.get(name.toLowerCase()) ?? {};
-    const priorValidated = Number(prior.validatedAt) || 0;
-    const priorEndorsed = Number(prior.endorsedAt) || 0;
-    const requestedLevel = Number(item?.level) || 1;
-    const maxSelfAssignedLevel = priorValidated >= 4 ? 4 : 3;
-    return {
-      name,
-      level: Math.min(Math.max(1, requestedLevel), maxSelfAssignedLevel),
-      validatedAt: priorValidated,
-      endorsedAt: priorEndorsed,
-    };
-  }).filter(Boolean);
-}
-
-function cleanRequests(value, currentRequests = {}, nextPartC = DEFAULT_PART_C) {
-  const incoming = value && typeof value === 'object' ? value : {};
-  const out = {};
-  for (const key of REQUEST_KEYS) {
-    const alreadyRequested = currentRequests[key] === true;
-    const requested = incoming[key] === true;
-    if (key === 'project') {
-      const hasDepthProfile = ['bio', 'linkedin', 'portfolio', 'references', 'availability']
-        .every((field) => String(nextPartC[field] ?? '').trim() !== '');
-      out[key] = alreadyRequested || (requested && hasDepthProfile);
-    } else {
-      out[key] = alreadyRequested || requested;
-    }
-  }
-  return out;
 }
 
 export function toApiUser(row) {
@@ -286,7 +237,7 @@ export function toApiUser(row) {
   };
 }
 
-export function toGraphUser(row) {
+function toGraphUser(row) {
   const user = toApiUser(row);
   if (!user) return null;
   const topicInterests = user.topics.map((t) => String(t.name || t).toLowerCase()).filter(Boolean);
@@ -333,12 +284,15 @@ export function createUser(db, { fullName, email, passwordHash, role = 'member',
 export function updateUserProfile(db, id, patch) {
   const current = toApiUser(getUserById(db, id));
   if (!current) return null;
-  const nextPartC = 'partC' in patch ? normalizePartC(patch.partC) : current.partC;
+  const nextPartC = 'partC' in patch ? normalizePartC(patch.partC, current.partC) : current.partC;
   const nextTopics = 'topics' in patch ? cleanTopics(patch.topics, current.topics) : current.topics;
   const nextIndicators = 'indicators' in patch ? cleanIndicators(patch.indicators) : current.indicators;
-  const maxTopicLevel = Math.max(0, ...nextTopics.map((topic) => Number(topic.level) || 0));
   const nextAssessed = 'assessed' in patch ? Boolean(patch.assessed) : current.assessed;
-  const canApplyMentor = nextAssessed && maxTopicLevel >= 3 && nextIndicators.transmission !== 'No';
+  const canApplyMentor = canApplyForMentor({
+    assessed: nextAssessed,
+    topics: nextTopics,
+    indicators: nextIndicators,
+  });
   const allowed = {
     fullName: ['full_name', (v) => String(v).trim().slice(0, 80)],
     title: ['title', (v) => String(v).trim().slice(0, 80)],
@@ -369,7 +323,7 @@ export function updateUserProfile(db, id, patch) {
   return getUserById(db, id);
 }
 
-export function listActiveUsers(db) {
+function listActiveUsers(db) {
   return db.prepare("SELECT * FROM users WHERE account_status = 'active' ORDER BY created_at ASC").all();
 }
 
@@ -445,7 +399,7 @@ function subscriptionToApi(row) {
   };
 }
 
-export function getSubscriptionByUserId(db, userId) {
+function getSubscriptionByUserId(db, userId) {
   return db.prepare(`
     SELECT * FROM subscriptions
     WHERE user_id = ?
@@ -481,84 +435,106 @@ export function deleteUserById(db, userId) {
   return result.changes > 0;
 }
 
-export function getSubscriptionByStripeId(db, stripeSubscriptionId) {
+function getSubscriptionByStripeId(db, stripeSubscriptionId) {
   if (!stripeSubscriptionId) return null;
   return db.prepare('SELECT * FROM subscriptions WHERE stripe_subscription_id = ?').get(stripeSubscriptionId);
 }
 
-export function upsertSubscription(db, {
-  userId,
-  stripeCustomerId = '',
-  stripeSubscriptionId = '',
-  stripeCheckoutSessionId = '',
-  status = 'pending',
-  currentPeriodEnd = '',
-  stripeEventCreated = 0,
-}) {
-  if (!userId) throw new Error('subscription userId is required');
-  const existing = (stripeSubscriptionId && getSubscriptionByStripeId(db, stripeSubscriptionId))
-    || (stripeCheckoutSessionId && db.prepare('SELECT * FROM subscriptions WHERE stripe_checkout_session_id = ?').get(stripeCheckoutSessionId));
-  const cleanStatus = cleanSubscriptionStatus(status);
-  const eventCreated = Number(stripeEventCreated) || 0;
-  if (existing) {
-    if (eventCreated && Number(existing.stripe_latest_event_created || 0) > eventCreated) {
-      return getSubscriptionByUserId(db, userId);
-    }
-    db.prepare(`
-      UPDATE subscriptions
-      SET user_id = ?, stripe_customer_id = ?, stripe_subscription_id = ?,
-          stripe_checkout_session_id = ?, status = ?, current_period_end = ?,
-          stripe_latest_event_created = max(stripe_latest_event_created, ?)
-      WHERE id = ?
-    `).run(
-      userId,
-      String(stripeCustomerId || existing.stripe_customer_id || ''),
-      String(stripeSubscriptionId || existing.stripe_subscription_id || ''),
-      String(stripeCheckoutSessionId || existing.stripe_checkout_session_id || ''),
-      cleanStatus,
-      String(currentPeriodEnd || existing.current_period_end || ''),
-      eventCreated,
-      existing.id,
-    );
-    return getSubscriptionByUserId(db, userId);
+function stripeEventIsNewer(row, { eventCreated, eventRank, eventId }) {
+  const current = [
+    Number(row.stripe_latest_event_created) || 0,
+    Number(row.stripe_latest_event_rank) || 0,
+    String(row.stripe_latest_event_id || ''),
+  ];
+  const incoming = [Number(eventCreated) || 0, Number(eventRank) || 0, String(eventId || '')];
+  for (let index = 0; index < current.length; index += 1) {
+    if (incoming[index] === current[index]) continue;
+    return incoming[index] > current[index];
   }
-  db.prepare(`
-    INSERT INTO subscriptions (
-      id, user_id, stripe_customer_id, stripe_subscription_id,
-      stripe_checkout_session_id, status, current_period_end, stripe_latest_event_created
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    randomUUID(),
-    userId,
-    String(stripeCustomerId || ''),
-    String(stripeSubscriptionId || ''),
-    String(stripeCheckoutSessionId || ''),
-    cleanStatus,
-    String(currentPeriodEnd || ''),
-    eventCreated,
-  );
-  return getSubscriptionByUserId(db, userId);
+  return false;
 }
 
-export function updateSubscriptionByStripeId(db, stripeSubscriptionId, { status, currentPeriodEnd = '', stripeEventCreated = 0 }) {
-  const existing = getSubscriptionByStripeId(db, stripeSubscriptionId);
-  if (!existing) return null;
-  const eventCreated = Number(stripeEventCreated) || 0;
-  if (eventCreated && Number(existing.stripe_latest_event_created || 0) > eventCreated) return existing;
-  db.prepare(`
-    UPDATE subscriptions
-    SET status = ?, current_period_end = ?, stripe_latest_event_created = max(stripe_latest_event_created, ?)
-    WHERE stripe_subscription_id = ?
-  `).run(cleanSubscriptionStatus(status), String(currentPeriodEnd || existing.current_period_end || ''), eventCreated, stripeSubscriptionId);
-  return getSubscriptionByStripeId(db, stripeSubscriptionId);
-}
+export function applyStripeEvent(db, {
+  eventId,
+  eventType,
+  eventCreated = 0,
+  eventRank = 0,
+  userId = null,
+  stripeCustomerId = null,
+  stripeSubscriptionId = null,
+  stripeCheckoutSessionId = null,
+  status = 'pending',
+  currentPeriodEnd = null,
+}) {
+  const cleanEventId = String(eventId || '').trim().slice(0, 120);
+  if (!cleanEventId) throw new Error('Stripe event id is required');
+  const duplicate = db.prepare('SELECT 1 FROM stripe_events WHERE id = ?').get(cleanEventId);
+  if (duplicate) return userId ? getSubscriptionStatus(db, userId) : null;
 
-export function recordStripeEventId(db, { id, type, created = 0 }) {
-  const eventId = String(id || '').trim();
-  if (!eventId) return true;
-  const existing = db.prepare('SELECT 1 FROM stripe_events WHERE id = ?').get(eventId);
-  if (existing) return false;
-  db.prepare('INSERT INTO stripe_events (id, type, event_created) VALUES (?, ?, ?)')
-    .run(eventId, String(type || 'unknown'), Number(created) || 0);
-  return true;
+  db.exec('BEGIN');
+  try {
+    const subscriptionId = String(stripeSubscriptionId || '').trim();
+    const checkoutId = String(stripeCheckoutSessionId || '').trim();
+    const cleanUserId = String(userId || '').trim();
+    const existing = (subscriptionId && getSubscriptionByStripeId(db, subscriptionId))
+      || (checkoutId && db.prepare('SELECT * FROM subscriptions WHERE stripe_checkout_session_id = ?').get(checkoutId))
+      || (cleanUserId && getSubscriptionByUserId(db, cleanUserId));
+    const finalUserId = existing?.user_id || cleanUserId;
+    const incoming = {
+      eventCreated: Number(eventCreated) || 0,
+      eventRank: Number(eventRank) || 0,
+      eventId: cleanEventId,
+    };
+
+    if (finalUserId && (!existing || stripeEventIsNewer(existing, incoming))) {
+      if (existing) {
+        db.prepare(`
+          UPDATE subscriptions
+          SET user_id = ?, stripe_customer_id = ?, stripe_subscription_id = ?,
+              stripe_checkout_session_id = ?, status = ?, current_period_end = ?,
+              stripe_latest_event_created = ?, stripe_latest_event_rank = ?,
+              stripe_latest_event_id = ?
+          WHERE id = ?
+        `).run(
+          finalUserId,
+          String(stripeCustomerId || existing.stripe_customer_id || ''),
+          String(stripeSubscriptionId || existing.stripe_subscription_id || ''),
+          String(stripeCheckoutSessionId || existing.stripe_checkout_session_id || ''),
+          cleanSubscriptionStatus(status),
+          String(currentPeriodEnd || existing.current_period_end || ''),
+          incoming.eventCreated,
+          incoming.eventRank,
+          incoming.eventId,
+          existing.id,
+        );
+      } else {
+        db.prepare(`
+          INSERT INTO subscriptions (
+            id, user_id, stripe_customer_id, stripe_subscription_id,
+            stripe_checkout_session_id, status, current_period_end,
+            stripe_latest_event_created, stripe_latest_event_rank, stripe_latest_event_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          randomUUID(),
+          finalUserId,
+          String(stripeCustomerId || ''),
+          subscriptionId,
+          checkoutId,
+          cleanSubscriptionStatus(status),
+          String(currentPeriodEnd || ''),
+          incoming.eventCreated,
+          incoming.eventRank,
+          incoming.eventId,
+        );
+      }
+    }
+
+    db.prepare('INSERT INTO stripe_events (id, type, event_created) VALUES (?, ?, ?)')
+      .run(cleanEventId, String(eventType || 'unknown').slice(0, 120), incoming.eventCreated);
+    db.exec('COMMIT');
+    return finalUserId ? getSubscriptionStatus(db, finalUserId) : null;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }

@@ -6,6 +6,8 @@ import { createHmac } from 'node:crypto';
 import { createApp, createCitySearch, validateRuntimeConfig } from './server.js';
 import { createStore } from './store.js';
 import { createDatabase } from './db.js';
+import { MemoryCache } from './cache.js';
+import { createRepository } from './repository.js';
 
 const LIVE_STRIPE_SECRET = ['sk', 'live', 'abc123'].join('_');
 const LIVE_STRIPE_WEBHOOK_SECRET = ['whsec', 'live123'].join('_');
@@ -295,6 +297,66 @@ test('Stripe webhook must be signed before subscription status changes', async (
   assert.equal(status.subscription.active, true);
 });
 
+test('Stripe webhook retries a mutation that failed before it was committed', async (t) => {
+  const secret = 'whsec_test_secret';
+  const payments = {
+    config: {
+      secretKey: 'sk_test_x',
+      webhookSecret: secret,
+      prices: { monthly: 'price_m', annual: 'price_a' },
+    },
+    fetchImpl: async () => { throw new Error('not used'); },
+  };
+  const db = createDatabase({ filename: ':memory:' });
+  t.after(() => db.close());
+  const baseRepository = createRepository({ db });
+  let failOnce = true;
+  const repository = {
+    ...baseRepository,
+    async applyStripeEvent(event) {
+      if (failOnce) {
+        failOnce = false;
+        throw new Error('transient subscription write failure');
+      }
+      return baseRepository.applyStripeEvent(event);
+    },
+  };
+  const base = await bootApp(t, createApp({ repository, payments }));
+  const signup = await postJson(base, '/api/auth/signup', {
+    fullName: 'Retry Member',
+    email: 'retry-webhook@example.com',
+    password: 'correct-horse',
+  });
+  const user = (await signup.clone().json()).user;
+  const cookie = cookiePair(signup);
+  const event = {
+    id: 'evt_retryable',
+    created: 300,
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_retryable',
+        client_reference_id: user.id,
+        metadata: { nodal_user_id: user.id },
+        customer: 'cus_retryable',
+        subscription: 'sub_retryable',
+        payment_status: 'paid',
+      },
+    },
+  };
+  const payload = JSON.stringify(event);
+  const send = () => fetch(`${base}/api/stripe/webhook`, {
+    method: 'POST',
+    headers: { 'Stripe-Signature': stripeSignature(payload, secret) },
+    body: payload,
+  });
+
+  assert.equal((await send()).status, 500);
+  assert.equal((await send()).status, 200);
+  const status = await (await fetch(`${base}/api/billing/status`, { headers: { Cookie: cookie } })).json();
+  assert.equal(status.subscription.status, 'active');
+});
+
 test('Stripe webhook ignores duplicate and older subscription events', async (t) => {
   const secret = 'whsec_test_secret';
   const payments = {
@@ -355,9 +417,31 @@ test('Stripe webhook ignores duplicate and older subscription events', async (t)
     },
   };
   assert.equal((await sendStripe(olderDeletedEvent)).status, 200);
-  const status = await (await fetch(`${base}/api/billing/status`, { headers: { Cookie: cookie } })).json();
+  let status = await (await fetch(`${base}/api/billing/status`, { headers: { Cookie: cookie } })).json();
   assert.equal(status.subscription.status, 'active');
   assert.equal(status.subscription.active, true);
+
+  const sameSecondDeletedEvent = {
+    ...olderDeletedEvent,
+    id: 'evt_same_second_deleted',
+    created: 200,
+  };
+  assert.equal((await sendStripe(sameSecondDeletedEvent)).status, 200);
+
+  const sameSecondLateCheckout = {
+    ...activeEvent,
+    id: 'evt_same_second_late_checkout',
+    data: {
+      object: {
+        ...activeEvent.data.object,
+        id: 'cs_ordered_late',
+      },
+    },
+  };
+  assert.equal((await sendStripe(sameSecondLateCheckout)).status, 200);
+  status = await (await fetch(`${base}/api/billing/status`, { headers: { Cookie: cookie } })).json();
+  assert.equal(status.subscription.status, 'canceled');
+  assert.equal(status.subscription.active, false);
 });
 
 test('production runtime config fails closed when deploy-critical env is missing', () => {
@@ -597,6 +681,23 @@ test('auth: repeated login attempts are rate limited before password work', asyn
   assert.match(limited.headers.get('retry-after'), /^\d+$/);
 });
 
+test('resolved session cookies are propagated to the response', async (t) => {
+  const repository = {
+    async resolveSession() {
+      return {
+        user: null,
+        cookies: ['nodal_session=refreshed; HttpOnly; Path=/; SameSite=Lax'],
+      };
+    },
+    close() {},
+  };
+  const base = await bootApp(t, createApp({ repository }));
+  const response = await fetch(`${base}/api/auth/state`);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('set-cookie'), /nodal_session=refreshed/);
+});
+
 test('auth: login, profile persistence and logout', async (t) => {
   const base = await bootDb(t);
   await postJson(base, '/api/auth/signup', {
@@ -626,6 +727,14 @@ test('auth: login, profile persistence and logout', async (t) => {
   const saved = await patch.json();
   assert.equal(saved.user.title, 'Urban Planner');
   assert.equal(saved.user.partC.availability, '2 h / month');
+
+  const partialResponse = await patchJson(base, '/api/me', {
+    partC: { bio: 'Planner and researcher' },
+  }, { Cookie: cookie });
+  const partial = await partialResponse.json();
+  assert.equal(partial.user.partC.bio, 'Planner and researcher');
+  assert.equal(partial.user.partC.availability, '2 h / month');
+  assert.equal(partial.user.partC.consent, true);
 
   const logout = await postJson(base, '/api/auth/logout', {}, { Cookie: cookie });
   assert.equal(logout.status, 200);
@@ -673,6 +782,93 @@ test('privacy: member can export personal data and delete their account', async 
   assert.equal(deleted.status, 200);
   assert.match(deleted.headers.get('set-cookie'), /nodal_session=;/);
   assert.equal((await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } })).status, 401);
+});
+
+test('privacy: consent revocation invalidates a shared cache across app instances', async (t) => {
+  const db = createDatabase({ filename: ':memory:' });
+  const cache = new MemoryCache();
+  t.after(() => db.close());
+  const first = await bootApp(t, createApp({ db, cache }));
+  const second = await bootApp(t, createApp({ db, cache }));
+
+  const viewerSignup = await postJson(first, '/api/auth/signup', {
+    fullName: 'Cache Viewer',
+    email: 'cache-viewer@example.com',
+    password: 'correct-horse',
+  });
+  const viewerCookie = cookiePair(viewerSignup);
+  const peerSignup = await postJson(second, '/api/auth/signup', {
+    fullName: 'Cache Peer',
+    email: 'cache-peer@example.com',
+    password: 'correct-horse',
+  });
+  const peerCookie = cookiePair(peerSignup);
+
+  await patchJson(first, '/api/me', {
+    city: 'Lima',
+    interests: ['mobility'],
+    active: ['pm'],
+    partC: { consent: true },
+  }, { Cookie: viewerCookie });
+  await patchJson(second, '/api/me', {
+    city: 'Lima',
+    interests: ['mobility'],
+    active: ['pm'],
+    partC: { consent: true },
+  }, { Cookie: peerCookie });
+
+  const primed = await fetch(`${first}/api/recommendations/me`, { headers: { Cookie: viewerCookie } });
+  assert.equal(primed.headers.get('x-cache'), 'MISS');
+  assert.ok((await primed.json()).recommendations.some((user) => user.name === 'Cache Peer'));
+
+  await patchJson(second, '/api/me', { partC: { consent: false } }, { Cookie: peerCookie });
+  const refreshed = await fetch(`${first}/api/recommendations/me`, { headers: { Cookie: viewerCookie } });
+  assert.equal(refreshed.headers.get('x-cache'), 'MISS');
+  assert.ok(!(await refreshed.json()).recommendations.some((user) => user.name === 'Cache Peer'));
+});
+
+test('privacy: account deletion makes cached recommendation data unreachable', async (t) => {
+  const db = createDatabase({ filename: ':memory:' });
+  const cache = new MemoryCache();
+  t.after(() => db.close());
+  const base = await bootApp(t, createApp({ db, cache }));
+
+  const viewerSignup = await postJson(base, '/api/auth/signup', {
+    fullName: 'Delete Cache Viewer',
+    email: 'delete-cache-viewer@example.com',
+    password: 'correct-horse',
+  });
+  const viewerCookie = cookiePair(viewerSignup);
+  const peerSignup = await postJson(base, '/api/auth/signup', {
+    fullName: 'Delete Cache Peer',
+    email: 'delete-cache-peer@example.com',
+    password: 'correct-horse',
+  });
+  const peerCookie = cookiePair(peerSignup);
+
+  for (const [cookie, title] of [[viewerCookie, 'Viewer'], [peerCookie, 'Peer']]) {
+    await patchJson(base, '/api/me', {
+      title,
+      city: 'Lima',
+      interests: ['housing'],
+      active: ['am'],
+      partC: { consent: true },
+    }, { Cookie: cookie });
+  }
+
+  const primed = await fetch(`${base}/api/recommendations/me`, { headers: { Cookie: viewerCookie } });
+  assert.ok((await primed.json()).recommendations.some((user) => user.name === 'Delete Cache Peer'));
+
+  const deleted = await fetch(`${base}/api/me`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Cookie: peerCookie },
+    body: JSON.stringify({ confirmEmail: 'delete-cache-peer@example.com' }),
+  });
+  assert.equal(deleted.status, 200);
+
+  const refreshed = await fetch(`${base}/api/recommendations/me`, { headers: { Cookie: viewerCookie } });
+  assert.equal(refreshed.headers.get('x-cache'), 'MISS');
+  assert.ok(!(await refreshed.json()).recommendations.some((user) => user.name === 'Delete Cache Peer'));
 });
 
 test('profile updates cannot forge validation markers or gated mentor state', async (t) => {

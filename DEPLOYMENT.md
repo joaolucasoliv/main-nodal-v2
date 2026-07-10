@@ -18,10 +18,10 @@ Apply this migration in Supabase SQL Editor or through the Supabase CLI:
 supabase db push
 ```
 
-Migration file:
+Migration directory:
 
 ```text
-supabase/migrations/20260709_production_core.sql
+supabase/migrations/
 ```
 
 Confirm after applying:
@@ -58,14 +58,6 @@ STRIPE_SECRET_KEY=<server-only Stripe live secret key>
 STRIPE_WEBHOOK_SECRET=<server-only Stripe webhook signing secret>
 STRIPE_PRICE_MONTHLY=price_...
 STRIPE_PRICE_ANNUAL=price_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
-```
-
-Add these when LinkedIn OAuth is configured in Supabase:
-
-```text
-LINKEDIN_CLIENT_ID=...
-LINKEDIN_CLIENT_SECRET=...
 ```
 
 ## Auth Redirect URL Setup
@@ -123,13 +115,12 @@ npm start
 - Public directory data is served only from intentional fields.
 - Auth cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
 - Stripe webhook signature verification is configured before live billing.
-- LinkedIn client secret is never exposed to browser code.
 - Production logs do not include passwords, access tokens, service keys, or raw profile payloads.
 
 ## Manual External Configuration Still Required
 
 - Supabase project creation and SQL migration execution.
-- Supabase Auth email settings and LinkedIn provider setup.
+- Supabase Auth email settings.
 - Stripe products, prices, Checkout configuration, and webhook endpoint.
 - Vercel project env vars, production domain, TLS, and deployment protection.
 - Optional Redis cache with `rediss://` if remote caching is needed.

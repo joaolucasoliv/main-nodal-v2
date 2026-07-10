@@ -1,19 +1,19 @@
 import { parseCookies, sessionCookie } from './auth.js';
 import { defaultProfilePreferences } from './domain.js';
 import { recordInteraction } from './store.js';
+import {
+  DEFAULT_INDICATORS,
+  DEFAULT_PART_C,
+  canApplyForMentor,
+  cleanIndicators,
+  cleanRequests,
+  cleanTopics,
+  normalizePartC,
+} from './profile-policy.js';
 
 const ROOT_ROLE = 'Member';
 const ACCESS_COOKIE = 'nodal_session';
 const REFRESH_COOKIE = 'nodal_refresh';
-const DEFAULT_PART_C = {
-  bio: '',
-  linkedin: '',
-  portfolio: '',
-  references: '',
-  availability: '',
-  consent: false,
-};
-const DEFAULT_INDICATORS = { leadership: 'No', transmission: 'No' };
 const SUBSCRIPTION_STATUSES = new Set([
   'pending',
   'active',
@@ -205,7 +205,7 @@ function toApiUserFromSupabase({ profile, preferences, onboarding }) {
     ...rawPartC,
     bio: cleanString(profile.bio || rawPartC.bio || '', 2000),
     availability: cleanString(onboarding?.availability || rawPartC.availability || '', 120),
-    consent: Boolean(dataConsent.directoryPublic ?? rawPartC.consent),
+    consent: dataConsent.directoryPublic === true || (dataConsent.directoryPublic === undefined && rawPartC.consent === true),
   };
   const title = cleanString(raw.title || profile.public_role || ROOT_ROLE, 80) || ROOT_ROLE;
   const interests = asArray(onboarding?.interests).map(String);
@@ -226,6 +226,7 @@ function toApiUserFromSupabase({ profile, preferences, onboarding }) {
     linkedin: cleanString(rawPartC.linkedin || raw.linkedin || '', 220),
     topics: rawTopics,
     skills: asArray(onboarding?.skills).map(String),
+    goals: asArray(onboarding?.goals).map(String),
     indicators: { ...DEFAULT_INDICATORS, ...(raw.indicators && typeof raw.indicators === 'object' ? raw.indicators : {}) },
     partC,
     requests: raw.requests && typeof raw.requests === 'object' ? raw.requests : {},
@@ -285,26 +286,28 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
     const metadata = authUser.user_metadata || {};
     const email = cleanString(authUser.email, 320);
     const fullName = cleanString(fallbackName || metadata.full_name || metadata.name || email.split('@')[0] || 'Member', 120);
-    const [profile] = await admin.rest('profiles', {
-      method: 'POST',
-      query: { on_conflict: 'id' },
-      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: [{
-        id: userId,
-        preferred_name: fullName.split(/\s+/)[0] || fullName,
-        full_name: fullName,
-        email,
-        avatar_url: cleanString(metadata.avatar_url, 500),
-        public_role: ROOT_ROLE,
-      }],
-    });
-    await admin.rest('profile_preferences', {
-      method: 'POST',
-      query: { on_conflict: 'user_id' },
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: [defaultProfilePreferences(userId)],
-    });
-    return toApiUserFromSupabase({ profile, preferences: null, onboarding: null });
+    await Promise.all([
+      admin.rest('profiles', {
+        method: 'POST',
+        query: { on_conflict: 'id' },
+        headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+        body: [{
+          id: userId,
+          preferred_name: fullName.split(/\s+/)[0] || fullName,
+          full_name: fullName,
+          email,
+          avatar_url: cleanString(metadata.avatar_url, 500),
+          public_role: ROOT_ROLE,
+        }],
+      }),
+      admin.rest('profile_preferences', {
+        method: 'POST',
+        query: { on_conflict: 'user_id' },
+        headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+        body: [defaultProfilePreferences(userId)],
+      }),
+    ]);
+    return apiUser(userId);
   }
 
   async function authUserFromToken(accessToken) {
@@ -313,19 +316,27 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
   }
 
   async function upsertProfileState(userId, patch, current) {
-    const partC = 'partC' in patch ? { ...DEFAULT_PART_C, ...(patch.partC || {}) } : current.partC;
+    if (!current) throw Object.assign(new Error('profile not found'), { status: 404 });
+    const partC = 'partC' in patch ? normalizePartC(patch.partC, current.partC) : current.partC;
     const title = 'title' in patch ? cleanString(patch.title, 80) : current.title;
     const fullName = 'fullName' in patch ? cleanString(patch.fullName, 120) : current.fullName;
     const city = 'city' in patch ? cleanString(patch.city, 120) : current.city;
+    const topics = 'topics' in patch ? cleanTopics(patch.topics, current.topics) : current.topics;
+    const indicators = 'indicators' in patch ? cleanIndicators(patch.indicators) : current.indicators;
+    const assessed = 'assessed' in patch ? Boolean(patch.assessed) : current.assessed;
+    const canApplyMentor = canApplyForMentor({ assessed, topics, indicators });
+    const mentorApplied = 'mentorApplied' in patch
+      ? Boolean(current.mentorApplied || (patch.mentorApplied && canApplyMentor))
+      : current.mentorApplied;
     const rawAnswers = {
       title,
       active: 'active' in patch ? asArray(patch.active).map(String).slice(0, 6) : current.active,
-      topics: 'topics' in patch ? asArray(patch.topics).slice(0, 12) : current.topics,
-      indicators: 'indicators' in patch ? { ...DEFAULT_INDICATORS, ...(patch.indicators || {}) } : current.indicators,
+      topics,
+      indicators,
       partC,
-      requests: 'requests' in patch ? (patch.requests || {}) : current.requests,
-      mentorApplied: 'mentorApplied' in patch ? Boolean(patch.mentorApplied) : current.mentorApplied,
-      assessed: 'assessed' in patch ? Boolean(patch.assessed) : current.assessed,
+      requests: 'requests' in patch ? cleanRequests(patch.requests, current.requests, partC) : current.requests,
+      mentorApplied,
+      assessed,
       notifRead: 'notifRead' in patch ? Boolean(patch.notifRead) : current.notifRead,
     };
     await admin.rest('profiles', {
@@ -361,7 +372,7 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
         user_id: userId,
         interests: 'interests' in patch ? asArray(patch.interests).map(String).slice(0, 12) : current.interests,
         skills: 'skills' in patch ? asArray(patch.skills).map(String).slice(0, 12) : current.skills,
-        goals: asArray(patch.goals).map(String).slice(0, 12),
+        goals: 'goals' in patch ? asArray(patch.goals).map(String).slice(0, 12) : current.goals,
         contribution_preferences: rawAnswers.active,
         availability: cleanString(partC.availability, 120),
         mentoring_interest: rawAnswers.mentorApplied ? 'applied' : 'none',
@@ -377,14 +388,30 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
     async resolveSession(req) {
       const cookies = parseCookies(req.headers.cookie);
       const accessToken = cookies.get(ACCESS_COOKIE);
-      if (!accessToken) return { user: null, cookies: [] };
+      const refreshToken = cookies.get(REFRESH_COOKIE);
+      if (accessToken) {
+        try {
+          const authUser = await authUserFromToken(accessToken);
+          if (!authUser?.id) return { user: null, cookies: clearSessionCookies(env) };
+          return { user: await ensureProfile(authUser), cookies: [] };
+        } catch (err) {
+          if (!refreshToken || ![401, 403].includes(err?.status)) {
+            return { user: null, cookies: err?.status === 401 ? clearSessionCookies(env) : [] };
+          }
+        }
+      }
+      if (!refreshToken) return { user: null, cookies: [] };
       try {
-        const authUser = await authUserFromToken(accessToken);
-        if (!authUser?.id) return { user: null, cookies: [] };
-        await ensureProfile(authUser);
-        return { user: await apiUser(authUser.id), cookies: [] };
+        const session = await browser.auth('/token', {
+          method: 'POST',
+          query: { grant_type: 'refresh_token' },
+          body: { refresh_token: refreshToken },
+        });
+        const authUser = session?.user || await authUserFromToken(session?.access_token);
+        if (!authUser?.id) return { user: null, cookies: clearSessionCookies(env) };
+        return { user: await ensureProfile(authUser), cookies: sessionCookies(session, env) };
       } catch {
-        return { user: null, cookies: [] };
+        return { user: null, cookies: clearSessionCookies(env) };
       }
     },
     async signup({ fullName, email, password }) {
@@ -509,76 +536,35 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
       }));
       return subscriptionToApi(row);
     },
-    async upsertSubscription({
-      userId,
-      stripeCustomerId = '',
-      stripeSubscriptionId = '',
-      stripeCheckoutSessionId = '',
+    async applyStripeEvent({
+      eventId,
+      eventType,
+      eventCreated = 0,
+      eventRank = 0,
+      userId = null,
+      stripeCustomerId = null,
+      stripeSubscriptionId = null,
+      stripeCheckoutSessionId = null,
       status = 'pending',
-      currentPeriodEnd = '',
-      stripeEventCreated = 0,
+      currentPeriodEnd = null,
     }) {
-      const eventCreated = Number(stripeEventCreated) || 0;
-      const existing = await first(admin.rest('stripe_customers', {
-        query: stripeSubscriptionId
-          ? { stripe_subscription_id: `eq.${stripeSubscriptionId}`, select: '*' }
-          : { user_id: `eq.${userId}`, select: '*', order: 'updated_at.desc', limit: 1 },
-      }));
-      if (existing && eventCreated && Number(existing.stripe_latest_event_created || 0) > eventCreated) {
-        return subscriptionToApi(existing);
-      }
-      const [row] = await admin.rest('stripe_customers', {
+      const nullable = (value, max) => cleanString(value, max) || null;
+      const row = await first(admin.request('/rest/v1/rpc/apply_stripe_event', {
         method: 'POST',
-        query: { on_conflict: stripeSubscriptionId ? 'stripe_subscription_id' : 'user_id' },
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: [{
-          user_id: userId,
-          stripe_customer_id: cleanString(stripeCustomerId, 120),
-          stripe_subscription_id: cleanString(stripeSubscriptionId, 120),
-          stripe_checkout_session_id: cleanString(stripeCheckoutSessionId, 120),
-          subscription_status: cleanStatus(status),
-          current_period_end: cleanString(currentPeriodEnd, 80),
-          stripe_latest_event_created: eventCreated,
-          updated_at: nowIso(),
-        }],
-      });
-      return subscriptionToApi(row);
-    },
-    async updateSubscriptionByStripeId(stripeSubscriptionId, { status, currentPeriodEnd = '', stripeEventCreated = 0 }) {
-      if (!stripeSubscriptionId) return null;
-      const existing = await first(admin.rest('stripe_customers', {
-        query: { stripe_subscription_id: `eq.${stripeSubscriptionId}`, select: '*' },
-      }));
-      const eventCreated = Number(stripeEventCreated) || 0;
-      if (!existing) return null;
-      if (eventCreated && Number(existing.stripe_latest_event_created || 0) > eventCreated) return subscriptionToApi(existing);
-      const [row] = await admin.rest('stripe_customers', {
-        method: 'PATCH',
-        query: { stripe_subscription_id: `eq.${stripeSubscriptionId}` },
-        headers: { Prefer: 'return=representation' },
         body: {
-          subscription_status: cleanStatus(status),
-          current_period_end: cleanString(currentPeriodEnd, 80),
-          stripe_latest_event_created: eventCreated,
-          updated_at: nowIso(),
+          p_event_id: cleanString(eventId, 120),
+          p_event_type: cleanString(eventType || 'unknown', 120),
+          p_event_created: Number(eventCreated) || 0,
+          p_event_rank: Number(eventRank) || 0,
+          p_user_id: nullable(userId, 80),
+          p_stripe_customer_id: nullable(stripeCustomerId, 120),
+          p_stripe_subscription_id: nullable(stripeSubscriptionId, 120),
+          p_stripe_checkout_session_id: nullable(stripeCheckoutSessionId, 120),
+          p_status: cleanStatus(status),
+          p_current_period_end: nullable(currentPeriodEnd, 80),
         },
-      });
-      return row ? subscriptionToApi(row) : null;
-    },
-    async recordStripeEventId({ id, type, created = 0 }) {
-      const eventId = cleanString(id, 120);
-      if (!eventId) return true;
-      try {
-        await admin.rest('stripe_events', {
-          method: 'POST',
-          headers: { Prefer: 'return=minimal' },
-          body: [{ id: eventId, type: cleanString(type || 'unknown', 120), event_created: Number(created) || 0 }],
-        });
-        return true;
-      } catch (err) {
-        if (err.status === 409) return false;
-        throw err;
-      }
+      }));
+      return subscriptionToApi(row);
     },
     close() {},
   };

@@ -39,7 +39,7 @@ Production on Vercel should use:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SECRET_KEY` or legacy `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_APP_URL` and/or `PUBLIC_BASE_URL`
-- Stripe and LinkedIn placeholders from `.env.example` when those integrations are configured
+- The four server-only Stripe variables from `.env.example` when live billing is configured
 
 Local-only SQLite fallback:
 
@@ -50,13 +50,13 @@ DATA_BACKEND=sqlite npm start
 
 ## Database
 
-Production schema lives in:
+Production schema migrations live in:
 
 ```sh
-supabase/migrations/20260709_production_core.sql
+supabase/migrations/
 ```
 
-Apply it in Supabase SQL Editor or with the Supabase CLI. The migration creates profile, preferences, onboarding, organization, membership, Stripe customer, follows, interactions, and Stripe event tables with RLS enabled.
+Apply them in order with the Supabase CLI. They create the app tables, enable RLS, and install the forward security hardening for existing projects.
 
 ## Run Locally
 
@@ -98,7 +98,3 @@ The tests cover recommendation behavior, auth/session flow, profile persistence,
 ## Stripe
 
 The browser never receives `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET`. `/api/checkout` creates Checkout Sessions server-side, and `/api/stripe/webhook` accepts subscription state only after Stripe signature verification. Do not store card data in Supabase; the schema stores only Stripe IDs and subscription metadata.
-
-## LinkedIn
-
-LinkedIn OAuth is prepared through environment placeholders. Configure the provider in Supabase Auth, using `LINKEDIN_CLIENT_ID` and server-only `LINKEDIN_CLIENT_SECRET`; do not hardcode either value in frontend files.
