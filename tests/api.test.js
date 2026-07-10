@@ -466,6 +466,21 @@ test('production runtime config fails closed when deploy-critical env is missing
     COOKIE_SECURE: 'true',
     PAYMENTS_MODE: 'preview',
   }));
+  assert.doesNotThrow(() => validateRuntimeConfig({
+    NODE_ENV: 'production',
+    DATA_BACKEND: 'sqlite',
+    DATABASE_PATH: '/var/lib/nodal/nodal.sqlite',
+    VERCEL_URL: 'nodal-preview.vercel.app',
+    COOKIE_SECURE: 'true',
+    PAYMENTS_MODE: 'preview',
+  }));
+  assert.throws(() => validateRuntimeConfig({
+    NODE_ENV: 'production',
+    DATA_BACKEND: 'sqlite',
+    DATABASE_PATH: '/var/lib/nodal/nodal.sqlite',
+    COOKIE_SECURE: 'true',
+    PAYMENTS_MODE: 'preview',
+  }), /public base URL/);
   assert.throws(() => validateRuntimeConfig({
     NODE_ENV: 'production',
     DATA_BACKEND: 'supabase',

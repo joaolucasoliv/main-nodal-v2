@@ -50,6 +50,8 @@ SUBSCRIPTION_PRICE_MONTHLY_LABEL=US$10
 SUBSCRIPTION_PRICE_ANNUAL_LABEL=US$100
 ```
 
+Set the Supabase URL and publishable key for both Production and Preview when preview deployments need working authentication. Scope the server credential only to trusted preview branches. Production uses the configured application URL; Vercel previews fall back to their platform-provided deployment URL.
+
 Add these when Stripe goes live:
 
 ```text

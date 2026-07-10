@@ -151,7 +151,8 @@ function clientIp(req) {
 }
 
 function publicBaseUrl(env = process.env) {
-  const configured = env.PUBLIC_BASE_URL || env.NEXT_PUBLIC_APP_URL;
+  const vercelUrl = String(env.VERCEL_URL ?? '').trim();
+  const configured = env.PUBLIC_BASE_URL || env.NEXT_PUBLIC_APP_URL || (vercelUrl ? `https://${vercelUrl}` : '');
   if (!configured) {
     throw Object.assign(new Error('public base URL is required when payments are configured'), { status: 500 });
   }
