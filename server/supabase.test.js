@@ -74,7 +74,7 @@ function profileState() {
   };
 }
 
-function statefulFetch(state, calls, { expireAccessToken = false } = {}) {
+function statefulFetch(state, calls, { expireAccessToken = false, signupResponse = null } = {}) {
   let accessAttempted = false;
   return async (rawUrl, options) => {
     const url = new URL(rawUrl);
@@ -82,6 +82,9 @@ function statefulFetch(state, calls, { expireAccessToken = false } = {}) {
     const body = options.body ? JSON.parse(options.body) : undefined;
     calls.push({ url, options, body });
 
+    if (url.pathname === '/auth/v1/signup' && signupResponse) {
+      return response(signupResponse);
+    }
     if (url.pathname === '/auth/v1/user') {
       if (expireAccessToken && !accessAttempted) {
         accessAttempted = true;
@@ -186,6 +189,33 @@ test('Supabase clients send service credentials only from the server client', as
   assert.equal(calls[0].options.headers.Authorization, 'Bearer test-public-key');
   assert.equal(calls[1].options.headers.apikey, 'test-server-key');
   assert.equal(calls[1].options.headers.Authorization, 'Bearer test-server-key');
+});
+
+test('Supabase signup accepts the direct user response used by email confirmation', async () => {
+  const state = profileState();
+  const calls = [];
+  const repo = createSupabaseRepository({
+    env: testEnv(),
+    fetchImpl: statefulFetch(state, calls, {
+      signupResponse: {
+        id: TEST_USER_ID,
+        email: state.profile.email,
+        user_metadata: { full_name: state.profile.full_name },
+        confirmation_sent_at: '2026-07-10T12:00:00.000Z',
+      },
+    }),
+  });
+
+  const result = await repo.signup({
+    fullName: state.profile.full_name,
+    email: state.profile.email,
+    password: 'correct-horse',
+  });
+
+  assert.equal(result.status, 202);
+  assert.equal(result.requiresEmailConfirmation, true);
+  assert.equal(result.user.id, TEST_USER_ID);
+  assert.deepEqual(result.cookies, []);
 });
 
 test('Supabase env rejects secret-looking keys in public config', () => {

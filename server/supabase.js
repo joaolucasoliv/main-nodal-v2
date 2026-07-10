@@ -419,13 +419,14 @@ export function createSupabaseRepository({ env = process.env, fetchImpl = fetch 
         method: 'POST',
         body: { email, password, data: { full_name: fullName } },
       });
-      const authUser = data.user;
+      const authUser = data.user || (data.id ? data : null);
+      const session = data.session || (data.access_token ? data : null);
       const user = await ensureProfile(authUser, fullName);
       return {
-        status: data.session?.access_token ? 201 : 202,
+        status: session?.access_token ? 201 : 202,
         user,
-        cookies: sessionCookies(data.session, env),
-        requiresEmailConfirmation: !data.session?.access_token,
+        cookies: sessionCookies(session, env),
+        requiresEmailConfirmation: !session?.access_token,
       };
     },
     async login({ email, password }) {
