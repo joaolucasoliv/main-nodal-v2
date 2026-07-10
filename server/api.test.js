@@ -1104,6 +1104,9 @@ test('static serving: pages resolve, traversal does not', async (t) => {
   const index = await fetch(`${base}/`);
   assert.equal(index.status, 200);
   assert.match(index.headers.get('content-type'), /text\/html/);
+  const image = await fetch(`${base}/assets/nodal-wordmark.webp`);
+  assert.equal(image.status, 200);
+  assert.equal(image.headers.get('content-type'), 'image/webp');
   assert.equal((await fetch(`${base}/payments.html`)).status, 200);
   assert.equal((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status, 404);
   assert.equal((await fetch(`${base}/package.json/../server/server.js`)).status, 404);

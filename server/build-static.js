@@ -1,4 +1,4 @@
-import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -16,6 +16,11 @@ const STATIC_FILES = [
   'script.js',
   'styles.css',
 ];
+const STATIC_ASSETS = [
+  'latam-map.webp',
+  'nodal-community.webp',
+  'nodal-wordmark.webp',
+];
 
 await mkdir(OUTPUT, { recursive: true });
 await Promise.all(STATIC_FILES.map((file) => copyFile(
@@ -23,4 +28,8 @@ await Promise.all(STATIC_FILES.map((file) => copyFile(
   path.join(OUTPUT, file),
 )));
 await rm(path.join(OUTPUT, 'assets'), { recursive: true, force: true });
-await cp(path.join(ROOT, 'assets'), path.join(OUTPUT, 'assets'), { recursive: true });
+await mkdir(path.join(OUTPUT, 'assets'), { recursive: true });
+await Promise.all(STATIC_ASSETS.map((file) => copyFile(
+  path.join(ROOT, 'assets', file),
+  path.join(OUTPUT, 'assets', file),
+)));
