@@ -594,6 +594,35 @@ test('billing config is served from environment, not frontend literals', async (
   assert.equal(body.cycles.annual.badge, 'configured annual');
 });
 
+test('billing config reports "Soon" while no launch price is configured', async (t) => {
+  const keys = [
+    'SUBSCRIPTION_PRICE_MONTHLY_LABEL',
+    'SUBSCRIPTION_MONTHLY_PERIOD',
+    'SUBSCRIPTION_PRICE_ANNUAL_LABEL',
+    'SUBSCRIPTION_ANNUAL_PERIOD',
+  ];
+  const old = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  delete process.env.SUBSCRIPTION_PRICE_MONTHLY_LABEL;
+  delete process.env.SUBSCRIPTION_PRICE_ANNUAL_LABEL;
+  process.env.SUBSCRIPTION_MONTHLY_PERIOD = '/ month';
+  process.env.SUBSCRIPTION_ANNUAL_PERIOD = '/ year';
+  t.after(() => {
+    for (const key of keys) {
+      if (old[key] === undefined) delete process.env[key];
+      else process.env[key] = old[key];
+    }
+  });
+  const base = await boot(t);
+  const res = await fetch(`${base}/api/billing/config`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.cycles.monthly.amount, 'Soon');
+  assert.equal(body.cycles.annual.amount, 'Soon');
+  // a dangling "/ month" next to "Soon" would read as a price
+  assert.equal(body.cycles.monthly.per, '');
+  assert.equal(body.cycles.annual.per, '');
+});
+
 test('landing membership price is loaded from billing config instead of a hardcoded amount', async (t) => {
   const base = await boot(t);
   const res = await fetch(`${base}/`);

@@ -46,8 +46,15 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=<server-only Supabase secret key>
 PAYMENTS_MODE=preview
+```
+
+Leave the `SUBSCRIPTION_*` price variables unset while launch pricing is not announced: the UI then shows `Soon` in every price slot. Setting them is what publishes a real amount:
+
+```text
 SUBSCRIPTION_PRICE_MONTHLY_LABEL=US$10
+SUBSCRIPTION_MONTHLY_PERIOD=/ month
 SUBSCRIPTION_PRICE_ANNUAL_LABEL=US$100
+SUBSCRIPTION_ANNUAL_PERIOD=/ year
 ```
 
 Set the Supabase URL and publishable key for both Production and Preview when preview deployments need working authentication. Scope the server credential only to trusted preview branches. Production uses the configured application URL; Vercel previews fall back to their platform-provided deployment URL.

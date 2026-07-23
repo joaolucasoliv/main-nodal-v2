@@ -174,6 +174,11 @@ function readRequiredEnv(env, key, { productionRequired = false } = {}) {
   return value;
 }
 
+/* Shown wherever a price would go while launch pricing is not announced yet.
+   A period ("/ month") is only meaningful next to a real amount, so the
+   period is suppressed until a price label is actually configured. */
+const PRICE_UNANNOUNCED = 'Soon';
+
 export function publicBillingConfig(env = process.env) {
   const productionRequired = env.NODE_ENV === 'production';
   const monthlyAmount = readRequiredEnv(env, 'SUBSCRIPTION_PRICE_MONTHLY_LABEL', { productionRequired });
@@ -182,16 +187,16 @@ export function publicBillingConfig(env = process.env) {
     cycles: {
       monthly: {
         label: env.SUBSCRIPTION_MONTHLY_LABEL || 'Monthly',
-        amount: monthlyAmount || 'Configured at checkout',
-        per: env.SUBSCRIPTION_MONTHLY_PERIOD || '',
+        amount: monthlyAmount || PRICE_UNANNOUNCED,
+        per: monthlyAmount ? (env.SUBSCRIPTION_MONTHLY_PERIOD || '') : '',
         note: env.SUBSCRIPTION_MONTHLY_NOTE || 'Cancel anytime.',
         renews: env.SUBSCRIPTION_MONTHLY_RENEWS || 'Every month, until you cancel',
         badge: env.SUBSCRIPTION_MONTHLY_BADGE || '',
       },
       annual: {
         label: env.SUBSCRIPTION_ANNUAL_LABEL || 'Annual',
-        amount: annualAmount || 'Configured at checkout',
-        per: env.SUBSCRIPTION_ANNUAL_PERIOD || '',
+        amount: annualAmount || PRICE_UNANNOUNCED,
+        per: annualAmount ? (env.SUBSCRIPTION_ANNUAL_PERIOD || '') : '',
         note: env.SUBSCRIPTION_ANNUAL_NOTE || '',
         renews: env.SUBSCRIPTION_ANNUAL_RENEWS || 'Every 12 months, until you cancel',
         badge: env.SUBSCRIPTION_ANNUAL_BADGE || '',
