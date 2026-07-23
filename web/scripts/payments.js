@@ -5,7 +5,7 @@
   let pricing = {
     monthly: {
       label: 'Monthly',
-      amount: 'Configured at checkout',
+      amount: 'Soon',
       per: '',
       note: 'Cancel anytime.',
       renews: 'Every month, until you cancel',
@@ -13,7 +13,7 @@
     },
     annual: {
       label: 'Annual',
-      amount: 'Configured at checkout',
+      amount: 'Soon',
       per: '',
       note: '',
       renews: 'Every 12 months, until you cancel',
@@ -44,7 +44,7 @@
     els.per.textContent = p.per;
     els.note.textContent = p.note;
     els.cycle.textContent = p.label;
-    els.price.textContent = `${p.amount} ${p.per}`;
+    els.price.textContent = [p.amount, p.per].filter(Boolean).join(' ');
     els.renews.textContent = p.renews;
 
     const on = key === 'monthly';

@@ -307,20 +307,29 @@
     card.replaceChildren();
 
     const head = el('div', 'gc-head');
+    // title + chip share a wrapping row so a long chip drops under the title
+    // instead of pushing the card open; the close button stays pinned right.
+    const headline = el('div', 'gc-headline');
     const title = el('h3', 'gc-title', labelOf(n.id));
-    const count = el('span', 'gc-chip', src.querySelector('.gc-count')?.textContent ?? '');
+    headline.append(title);
+    const countText = src.querySelector('.gc-count')?.textContent?.trim() ?? '';
+    if (countText) headline.append(el('span', 'gc-chip', countText));
     const close = el('button', 'gc-close', '✕');
     close.type = 'button';
     close.setAttribute('aria-label', 'Close');
     close.addEventListener('click', deselect);
-    head.append(title, count, close);
+    head.append(headline, close);
 
+    // breadcrumb from the hub; on the hub itself the path is just itself, which
+    // would only restate the title — so it is dropped in that case
     const path = pathFromHub(i);
-    const pathP = el('p', 'gc-path');
-    path.forEach((k, j) => {
-      if (j) pathP.append(el('span', 'gc-arrow', ' → '));
-      pathP.append(el('strong', k === i ? 'gc-here' : '', labelOf(N[k].id)));
-    });
+    const pathP = path.length > 1 ? el('p', 'gc-path') : null;
+    if (pathP) {
+      path.forEach((k, j) => {
+        if (j) pathP.append(el('span', 'gc-arrow', ' → '));
+        pathP.append(el('strong', k === i ? 'gc-here' : '', labelOf(N[k].id)));
+      });
+    }
 
     const labels = [
       uiText('graph.tabContacts', 'Contacts'),
@@ -357,7 +366,7 @@
     });
     panes.forEach((p, k) => { p.hidden = k !== cardTab; });
     tabsRow.append(...btns);
-    card.append(head, pathP, tabsRow, ...panes);
+    card.append(head, ...(pathP ? [pathP] : []), tabsRow, ...panes);
     anchorCard(i);
   }
 

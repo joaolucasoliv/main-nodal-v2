@@ -367,12 +367,17 @@ h1, h2, h3 {
   box-shadow: 7px 8px 0 rgba(61,92,56,.12); padding: 16px 16px 14px; }
 .graph-card::before { content: ""; position: absolute; top: 0; left: 0; width: 13px; height: 13px;
   border-top: 2px solid var(--green-bright); border-left: 2px solid var(--green-bright); }
-.gc-head { display: flex; align-items: center; gap: 10px; }
-.gc-title { font-size: 17px; color: var(--ink); margin-right: auto; }
+.gc-head { display: flex; align-items: flex-start; gap: 10px; }
+.gc-headline { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.gc-title { font-size: 17px; color: var(--ink); }
+/* chip text length varies from "9 active nodes" to a full sentence — it must wrap
+   inside the card, never force it wider */
 .gc-chip { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--green-deep); background: var(--green-soft);
-  border-radius: var(--r-pill); padding: 4px 9px; white-space: nowrap; }
-.gc-close { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 15px; padding: 4px 6px; }
+  border-radius: var(--r-pill); padding: 4px 9px; max-width: 100%; min-width: 0;
+  line-height: 1.45; overflow-wrap: anywhere; }
+.gc-close { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 15px;
+  padding: 4px 6px; flex-shrink: 0; margin-top: -2px; }
 .gc-close:hover { color: var(--ink); }
 .gc-path { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
   color: var(--muted); text-transform: uppercase; }
